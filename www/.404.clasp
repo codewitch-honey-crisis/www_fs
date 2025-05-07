@@ -1,0 +1,15 @@
+<%@status code="404" text="Not found" %>
+<%@header name="Content-Type" value="text/html"%><!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>404 Not found</title>
+    </head>
+    <body>
+        <center>
+            <h1>404 Not found</h1>
+            <img src="/images/404.jpg" />
+            <p>The specified resource could not be found.</p>
+        </center>
+    </body>
+</html>

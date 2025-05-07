@@ -1,0 +1,21 @@
+<%@status code="200" text="OK"%>
+<%@header name="Content-Type" value="text/html"%><!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Browsing filesystems</title>
+    </head>
+    <body>
+        <table style="border: 0; padding: 10px 10px 10px 10px;">
+            <tr><td>Mount Point<td></tr>
+            <tr><td><a href="./spiffs/">/spiffs/</a></td></tr>
+        <%
+#ifdef SD_CS
+            if(sd_card!=nullptr) {%>
+            <tr><td><a href="./sdcard/">/sdcard/</a></tr>
+        <%}
+#endif
+            %>
+        </table>
+    </body>
+</html>

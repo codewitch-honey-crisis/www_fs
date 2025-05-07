@@ -1,0 +1,15 @@
+<%@status code="500" text="Internal server error" %>
+<%@header name="Content-Type" value="text/html"%><!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>500 Internal server error</title>
+    </head>
+    <body>
+        <center>
+            <h1>500 Internal server error</h1>
+            <img src="/images/500.jpg" />
+            <p>An internal error occurred processing the request.</p>
+        </center>
+    </body>
+</html>

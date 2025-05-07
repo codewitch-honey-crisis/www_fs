@@ -1,0 +1,46 @@
+<%@status code="200" text="OK"%>
+<%@header name="Content-Type" value="text/html"%><!DOCTYPE html>
+<html><%
+    httpd_context& ctx = *(httpd_context*)resp_arg;
+    const char* qpart = strchr(ctx.path_and_query,'?');
+    size_t plen;
+    if(qpart!=nullptr) {
+        plen = qpart - ctx.path_and_query + 1;
+    } else {
+        plen = strlen(ctx.path_and_query);
+    }
+    char path[513]={0};
+    strncpy(path,ctx.path_and_query,plen);
+    DIR* dir = opendir(path);
+    char tmp[257]={0};
+    char tmp2[257]={0};
+    memset(tmp2,0,512);
+%>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Browsing <%=path%></title>
+    </head>
+    <body>
+        <table style="border: 0; padding: 10px 10px 10px 10px;">
+            <tr><td>Name<td><td>Size</td><td>Last Modified</td></tr>
+            <tr><td><a href=".">.</a></td><td>&nbsp;</td><td>&nbsp;</td></tr>
+        <%if(!(path[0]=='/' && path[1]=='\0')){%>
+            <tr><td><a href="..">..</a></td><td>&nbsp;</td><td>&nbsp;</td></tr>
+        <%}%>
+        <%stat_t st; dirent* de; while(nullptr!=(de=readdir(dir))) {
+            strcpy(tmp,path);
+            strcat(tmp,de->d_name);
+            st = fs_stat(tmp);
+            bool is_dir = (st.st_mode & S_IFMT)==S_IFDIR;
+            httpd_url_encode(tmp2,sizeof(tmp2),de->d_name,nullptr);
+            if(is_dir) {
+                strcat(tmp2,"/");
+            }
+%>
+            <tr><td><a href="<%=tmp2%>"><%=de->d_name%></a><td><td><%=is_dir?NAN:(((float)st.st_size)/1024.f)%><%=is_dir?"":"KB"%></td><td><%=st.st_mtim.tv_sec%></td></tr>
+        <%}%>        
+        </table>
+    </body>
+</html><%
+    closedir(dir);
+%>
