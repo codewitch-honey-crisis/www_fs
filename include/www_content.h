@@ -5,7 +5,7 @@
 
 #include "www_application.h"
 
-#define WWW_RESPONSE_HANDLER_COUNT 6
+#define WWW_RESPONSE_HANDLER_COUNT 5
 typedef struct { const char* path; const char* path_encoded; void (* handler) (void* arg); } www_response_handler_t;
 extern www_response_handler_t www_response_handlers[WWW_RESPONSE_HANDLER_COUNT];
 #ifdef __cplusplus
@@ -18,8 +18,6 @@ void www_content_404_clasp(void* resp_arg);
 void www_content_500_clasp(void* resp_arg);
 // ./.fs.clasp
 void www_content_fs_clasp(void* resp_arg);
-// ./.fs_api.clasp
-void www_content_fs_api_clasp(void* resp_arg);
 // ./index.clasp
 void www_content_index_clasp(void* resp_arg);
 // ./images/404.jpg
@@ -39,36 +37,30 @@ int www_response_handler_match(const char* path_and_query);
 
 #ifdef WWW_CONTENT_IMPLEMENTATION
 
-www_response_handler_t www_response_handlers[6] = {
+www_response_handler_t www_response_handlers[5] = {
     { "/", "/", www_content_index_clasp },
     { "/images/404.jpg", "/images/404.jpg", www_content_images_404_jpg },
     { "/images/500.jpg", "/images/500.jpg", www_content_images_500_jpg },
     { "/index.clasp", "/index.clasp", www_content_index_clasp },
-    { "", "", www_content_fs_api_clasp },
     { "", "", www_content_fs_clasp }
 };
 // matches a path to a response handler index
 int www_response_handler_match(const char* path_and_query) {
     static const int16_t fsm_data[] = {
-        -1, 1, 6, 1, 47, 47, 0, 3, 20, 1, 97, 97, 114, 1, 105, 105, 296, 1, 115, 115, 
-        -1, 1, 26, 1, 112, 112, -1, 1, 32, 1, 105, 105, -1, 1, 38, 1, 47, 47, -1, 1, 
-        44, 1, 115, 115, -1, 2, 54, 1, 100, 100, 90, 1, 112, 112, -1, 1, 60, 1, 99, 99, 
-        -1, 1, 66, 1, 97, 97, -1, 1, 72, 1, 114, 114, -1, 1, 78, 1, 100, 100, -1, 1, 
-        84, 1, 47, 47, 4, 1, 84, 1, 0, 127, -1, 1, 96, 1, 105, 105, -1, 1, 102, 1, 
-        102, 102, -1, 1, 108, 1, 102, 102, -1, 1, 78, 1, 115, 115, -1, 2, 124, 1, 109, 109, 
-        240, 1, 110, 110, -1, 1, 130, 1, 97, 97, -1, 1, 136, 1, 103, 103, -1, 1, 142, 1, 
-        101, 101, -1, 1, 148, 1, 115, 115, -1, 1, 154, 1, 47, 47, -1, 2, 164, 1, 52, 52, 
-        202, 1, 53, 53, -1, 1, 170, 1, 48, 48, -1, 1, 176, 1, 52, 52, -1, 1, 182, 1, 
-        46, 46, -1, 1, 188, 1, 106, 106, -1, 1, 194, 1, 112, 112, -1, 1, 200, 1, 103, 103, 
-        1, 0, -1, 1, 208, 1, 48, 48, -1, 1, 214, 1, 48, 48, -1, 1, 220, 1, 46, 46, 
-        -1, 1, 226, 1, 106, 106, -1, 1, 232, 1, 112, 112, -1, 1, 238, 1, 103, 103, 2, 0, 
-        -1, 1, 246, 1, 100, 100, -1, 1, 252, 1, 101, 101, -1, 1, 258, 1, 120, 120, -1, 1, 
-        264, 1, 46, 46, -1, 1, 270, 1, 99, 99, -1, 1, 276, 1, 108, 108, -1, 1, 282, 1, 
-        97, 97, -1, 1, 288, 1, 115, 115, -1, 1, 294, 1, 112, 112, 3, 0, -1, 2, 306, 1, 
-        100, 100, 342, 1, 112, 112, -1, 1, 312, 1, 99, 99, -1, 1, 318, 1, 97, 97, -1, 1, 
-        324, 1, 114, 114, -1, 1, 330, 1, 100, 100, -1, 1, 336, 1, 47, 47, 5, 1, 336, 1, 
-        0, 127, -1, 1, 348, 1, 105, 105, -1, 1, 354, 1, 102, 102, -1, 1, 360, 1, 102, 102, 
-        -1, 1, 330, 1, 115, 115 };
+        -1, 1, 6, 1, 47, 47, 0, 2, 16, 1, 105, 105, 198, 1, 115, 115, -1, 2, 26, 1, 
+        109, 109, 142, 1, 110, 110, -1, 1, 32, 1, 97, 97, -1, 1, 38, 1, 103, 103, -1, 1, 
+        44, 1, 101, 101, -1, 1, 50, 1, 115, 115, -1, 1, 56, 1, 47, 47, -1, 2, 66, 1, 
+        52, 52, 104, 1, 53, 53, -1, 1, 72, 1, 48, 48, -1, 1, 78, 1, 52, 52, -1, 1, 
+        84, 1, 46, 46, -1, 1, 90, 1, 106, 106, -1, 1, 96, 1, 112, 112, -1, 1, 102, 1, 
+        103, 103, 1, 0, -1, 1, 110, 1, 48, 48, -1, 1, 116, 1, 48, 48, -1, 1, 122, 1, 
+        46, 46, -1, 1, 128, 1, 106, 106, -1, 1, 134, 1, 112, 112, -1, 1, 140, 1, 103, 103, 
+        2, 0, -1, 1, 148, 1, 100, 100, -1, 1, 154, 1, 101, 101, -1, 1, 160, 1, 120, 120, 
+        -1, 1, 166, 1, 46, 46, -1, 1, 172, 1, 99, 99, -1, 1, 178, 1, 108, 108, -1, 1, 
+        184, 1, 97, 97, -1, 1, 190, 1, 115, 115, -1, 1, 196, 1, 112, 112, 3, 0, -1, 2, 
+        208, 1, 100, 100, 244, 1, 112, 112, -1, 1, 214, 1, 99, 99, -1, 1, 220, 1, 97, 97, 
+        -1, 1, 226, 1, 114, 114, -1, 1, 232, 1, 100, 100, -1, 1, 238, 1, 47, 47, 4, 1, 
+        238, 1, 0, 127, -1, 1, 250, 1, 105, 105, -1, 1, 256, 1, 102, 102, -1, 1, 262, 1, 
+        102, 102, -1, 1, 232, 1, 115, 115 };
     
     int adv = 0;
     int tlen;
@@ -230,22 +222,6 @@ void www_content_fs_clasp(void* resp_arg) {
         closedir(dir);
     
     httpd_send_block("0\r\n\r\n", 5, resp_arg);
-    if(((httpd_context*)resp_arg)->fd>-1) free(resp_arg);
-}
-void www_content_fs_api_clasp(void* resp_arg) {
-    // HTTP/1.1 200 OK
-    // Content-Type: application/json
-    // Content-Length: 17
-    // Content-Encoding: deflate
-    // 
-    static const unsigned char http_response_data[] = {
-        0x48, 0x54, 0x54, 0x50, 0x2F, 0x31, 0x2E, 0x31, 0x20, 0x32, 0x30, 0x30, 0x20, 0x4F, 0x4B, 0x0D, 0x0A, 0x43, 0x6F, 0x6E, 
-        0x74, 0x65, 0x6E, 0x74, 0x2D, 0x54, 0x79, 0x70, 0x65, 0x3A, 0x20, 0x61, 0x70, 0x70, 0x6C, 0x69, 0x63, 0x61, 0x74, 0x69, 
-        0x6F, 0x6E, 0x2F, 0x6A, 0x73, 0x6F, 0x6E, 0x0D, 0x0A, 0x43, 0x6F, 0x6E, 0x74, 0x65, 0x6E, 0x74, 0x2D, 0x4C, 0x65, 0x6E, 
-        0x67, 0x74, 0x68, 0x3A, 0x20, 0x31, 0x37, 0x0D, 0x0A, 0x43, 0x6F, 0x6E, 0x74, 0x65, 0x6E, 0x74, 0x2D, 0x45, 0x6E, 0x63, 
-        0x6F, 0x64, 0x69, 0x6E, 0x67, 0x3A, 0x20, 0x64, 0x65, 0x66, 0x6C, 0x61, 0x74, 0x65, 0x0D, 0x0A, 0x0D, 0x0A, 0x8A, 0xE6, 
-        0xE5, 0x52, 0x00, 0x02, 0x5E, 0xAE, 0x58, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x03, 0x00 };
-    httpd_send_block((const char*)http_response_data,sizeof(http_response_data), resp_arg);
     if(((httpd_context*)resp_arg)->fd>-1) free(resp_arg);
 }
 void www_content_index_clasp(void* resp_arg) {

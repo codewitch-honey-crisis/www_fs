@@ -3,7 +3,4 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
-cigen/cigen/bin/
-cigen/cigen/obj/
-cigen/.vs/
-cigen/cigen/.vs/
+data/wifi.txt

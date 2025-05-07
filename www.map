@@ -1,2 +1,2 @@
-.fs_api.clasp '(\/api\/spiffs\/(.*))|(\/api\/sdcard\/(.*))' # wildcard match
+#.fs_api.clasp '(\/api\/spiffs\/(.*))|(\/api\/sdcard\/(.*))' # wildcard match
 .fs.clasp '(\/spiffs\/(.*))|(\/sdcard\/(.*))' # wildcard match
