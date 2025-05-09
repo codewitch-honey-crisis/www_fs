@@ -437,6 +437,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
             size_t path_len = sze == nullptr ? strlen(req->uri) : sze - req->uri + 1;
 
             httpd_url_decode(path, path_len, req->uri);
+            
             path[path_len] = '\0';
             if(is_upload) {
                 char ctype[256];
@@ -557,7 +558,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                 }
                 
             
-            }
+            } 
             stat_t st;
             if (0 == stat(path, &st) && ((st.st_mode & S_IFMT) != S_IFDIR)) {
                 // is file
@@ -591,6 +592,13 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                 }
                 fclose(file);
                 return ESP_OK;
+            } else {
+                DIR* d = opendir(path);
+                if(d!=nullptr) {
+                    closedir(d);
+                } else {
+                    handler_index=-1;
+                }
             }
         }
         resp_arg = (httpd_context*)malloc(sizeof(httpd_context));
@@ -617,6 +625,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
             handler_fn =
                 (httpd_work_fn_t)www_response_handlers[handler_index].handler;
         }
+    
         // and off we go.
         httpd_queue_work(req->handle, handler_fn, resp_arg);
         return ESP_OK;
