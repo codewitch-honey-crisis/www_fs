@@ -596,6 +596,9 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                 DIR* d = opendir(path);
                 if(d!=nullptr) {
                     closedir(d);
+                    if(strrchr(path,'/')!=path+path_len-1) {
+                        handler_index = -1;
+                    }
                 } else {
                     handler_index=-1;
                 }
