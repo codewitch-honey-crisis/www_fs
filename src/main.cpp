@@ -389,6 +389,9 @@ typedef struct {
     size_t buffer_pos;
 } httpd_recv_buffer_t;
 static int httpd_buffered_read(void* state) {
+    if(state==nullptr) {
+        return -1;
+    }
     httpd_recv_buffer_t* rfb = (httpd_recv_buffer_t*)state;
     if(rfb->buffer_pos>=rfb->buffer_size) {
         if(!rfb->remaining) {
@@ -397,6 +400,8 @@ static int httpd_buffered_read(void* state) {
         vTaskDelay(5);
         int r=httpd_req_recv(rfb->req,rfb->buffer,rfb->remaining<=sizeof(rfb->buffer)?rfb->remaining:sizeof(rfb->buffer));
         if(r<1) {
+            rfb->buffer_size = 0;
+            rfb->buffer_pos = 0;
             return -1;
         }
         
@@ -407,7 +412,9 @@ static int httpd_buffered_read(void* state) {
             return -1;
         }
     }
-    return rfb->buffer[rfb->buffer_pos++];
+    char result = rfb->buffer[rfb->buffer_pos];
+    ++rfb->buffer_pos;
+    return result;
 }
 static esp_err_t httpd_request_handler(httpd_req_t* req) {
     // match the handler
@@ -449,75 +456,77 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                     memset(recb,0,sizeof(httpd_recv_buffer_t));
                     recb->req = req;
                     recb->remaining = req->content_len;
-                    mpm_context_t ctx;
-                    mpm_init(be,0,httpd_buffered_read,recb,&ctx);
-                    size_t size = 1024;
-                    mpm_node_t node;
-                    char disposition=0;
-                    while((node=mpm_parse(&ctx,recb->working,&size))>0) {
-                        switch(node) {
-                            case MPM_HEADER_NAME_PART:
-                                recb->working[size]='\0';
-                                disposition=0==my_stricmp(recb->working,"Content-Disposition");
-                                break;
-                            case MPM_HEADER_VALUE_PART:
-                                if(disposition) {
-                                    char state = 0;
-                                    const char* sz = recb->working;
-                                    recb->working[size]=0;
-                                    char end = 0;
-                                    do {
-                                        const char* sze = strpbrk(sz,";=");
-                                        if(sze==NULL) {
-                                            end = 1;
-                                            sze = sz+strlen(sz);
-                                        } 
-                                        recb->working[(sz-recb->working)+(sze-sz)]='\0';
-                                        while(*sz==' ') ++sz;
-                                        switch(state) {
-                                            case 0:
-                                                if(0==my_stricmp(sz,"form-data")) {
-                                                    state = 1;
-                                                }
-                                                break;
-                                            case 1:
-                                                if(0==my_stricmp(sz,"filename")) {
-                                                    state = 2;
-                                                }
-                                                break;
-                                            case 2:
-                                                if(*sz=='\"') {
-                                                    ++sz;
-                                                    if(*sz) {
-                                                        recb->working[(sz-recb->working)+strlen(sz)-1]='\0';
+                    if(recb->remaining>0) {
+                        mpm_context_t ctx;
+                        mpm_init(be,0,httpd_buffered_read,recb,&ctx);
+                        size_t size = 1024;
+                        mpm_node_t node;
+                        char disposition=0;
+                        while((node=mpm_parse(&ctx,recb->working,&size))>0) {
+                            switch(node) {
+                                case MPM_HEADER_NAME_PART:
+                                    recb->working[size]='\0';
+                                    disposition=0==my_stricmp(recb->working,"Content-Disposition");
+                                    break;
+                                case MPM_HEADER_VALUE_PART:
+                                    if(disposition) {
+                                        char state = 0;
+                                        const char* sz = recb->working;
+                                        recb->working[size]=0;
+                                        char end = 0;
+                                        do {
+                                            const char* sze = strpbrk(sz,";=");
+                                            if(sze==NULL) {
+                                                end = 1;
+                                                sze = sz+strlen(sz);
+                                            } 
+                                            recb->working[(sz-recb->working)+(sze-sz)]='\0';
+                                            while(*sz==' ') ++sz;
+                                            switch(state) {
+                                                case 0:
+                                                    if(0==my_stricmp(sz,"form-data")) {
+                                                        state = 1;
                                                     }
-                                                } else {
-                                                    recb->working[(sz-recb->working)+strlen(sz)]='\0';
-                                                }
-                                                strcat(path,sz);
-                                                remove(path); // delete if it exists;
-                                                fcur=fopen(path,"wb");
-                                                state = 3;
-                                        }
-                                        sz+=strlen(sz)+1;
-                                    } while(!end);
-                                }
-                                break;
-                            case MPM_CONTENT_PART:
-                                if(fcur!=nullptr) {
-                                    fwrite(recb->working,1,size,fcur);
-                                }
-                                break;
-                            case MPM_CONTENT_END:
-                                if(fcur!=NULL) {
-                                    fclose(fcur);
-                                    fcur = NULL;
-                                }
-                                path[path_len]='\0';
-                                break;
-                                        
+                                                    break;
+                                                case 1:
+                                                    if(0==my_stricmp(sz,"filename")) {
+                                                        state = 2;
+                                                    }
+                                                    break;
+                                                case 2:
+                                                    if(*sz=='\"') {
+                                                        ++sz;
+                                                        if(*sz) {
+                                                            recb->working[(sz-recb->working)+strlen(sz)-1]='\0';
+                                                        }
+                                                    } else {
+                                                        recb->working[(sz-recb->working)+strlen(sz)]='\0';
+                                                    }
+                                                    strcat(path,sz);
+                                                    remove(path); // delete if it exists;
+                                                    fcur=fopen(path,"wb");
+                                                    state = 3;
+                                            }
+                                            sz+=strlen(sz)+1;
+                                        } while(!end);
+                                    }
+                                    break;
+                                case MPM_CONTENT_PART:
+                                    if(fcur!=nullptr) {
+                                        fwrite(recb->working,1,size,fcur);
+                                    }
+                                    break;
+                                case MPM_CONTENT_END:
+                                    if(fcur!=NULL) {
+                                        fclose(fcur);
+                                        fcur = NULL;
+                                    }
+                                    path[path_len]='\0';
+                                    break;
+                                            
+                            }
+                            size = 1024;
                         }
-                        size = 1024;
                     }
                     if(recb!=nullptr) { free(recb);recb = nullptr; }
                 } else { // standard for post, probably delete
@@ -555,7 +564,6 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                 static const char* header1 =
                     "HTTP/1.1 200 OK\r\nContent-Disposition: attachment; "
                     "filename=\"";
-                fputs(header1, stdout);
                 const char* szpfn = path + 8;
                 const char* szfn = strrchr(szpfn, '/');
                 httpd_send(req, header1, strlen(header1));
