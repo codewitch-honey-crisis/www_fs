@@ -556,8 +556,6 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                     free(data);
 
                 }
-                
-            
             } 
             stat_t st;
             if (0 == stat(path, &st) && ((st.st_mode & S_IFMT) != S_IFDIR)) {
