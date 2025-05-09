@@ -495,6 +495,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                                                     recb->working[(sz-recb->working)+strlen(sz)]='\0';
                                                 }
                                                 strcat(path,sz);
+                                                remove(path); // delete if it exists;
                                                 fcur=fopen(path,"wb");
                                                 state = 3;
                                         }
@@ -519,12 +520,35 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                         size = 1024;
                     }
                     if(recb!=nullptr) { free(recb);recb = nullptr; }
+                } else { // standard for post, probably delete
+                    char *data = (char*)malloc(req->content_len+1);
+                    if(data==nullptr) {
+                        goto error;
+                    }
+                    httpd_req_recv(req,data,req->content_len);
+                    data[req->content_len]='\0';
+                    char* sz = strstr(data,"delete=");
+                    if(sz!=nullptr) {
+                        sz+=7;
+                        char* sze = strpbrk(sz,"&;");
+                        if(sze==nullptr) {
+                            sze = sz+strlen(sz);
+                        } else {
+                            *sze='\0';
+                        }
+                        strcat(path,sz);
+                        fputs("deleting ",stdout);
+                        puts(path);
+                        remove(path);
+                        path[path_len]='\0';
+                        
+                    }
+                    free(data);
+
                 }
                 
             
             }
-            fputs("path: ",stdout);
-            puts(path);
             stat_t st;
             if (0 == stat(path, &st) && ((st.st_mode & S_IFMT) != S_IFDIR)) {
                 // is file
