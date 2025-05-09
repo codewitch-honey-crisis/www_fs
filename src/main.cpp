@@ -28,6 +28,8 @@
 #include "esp_wifi.h"
 #include "nvs_flash.h"
 
+#include "mpm_parser.h"
+
 // used by the page handlers
 struct httpd_context {
     char path_and_query[513];
@@ -55,19 +57,6 @@ char enc_html5[256] = {0};
 #define WWW_CONTENT_IMPLEMENTATION
 #include "www_content.h"
 
-static const int fs_id(dirent* d) {
-    if (!d) return -1;
-    return (int)d->d_ino;
-}
-
-static const char* fs_name(dirent* d) {
-    if (!d) return nullptr;
-    return d->d_name;
-}
-static bool fs_is_dir(dirent* d) {
-    if (!d) return false;
-    return d->d_type == 4;  // DT_DIR;
-}
 static stat_t fs_stat(const char* path) {
     stat_t s;
 
@@ -78,6 +67,24 @@ static stat_t fs_stat(const char* path) {
 #ifdef M5STACK_CORE2
 using namespace esp_idf;  // devices
 #endif
+
+
+static int my_stricmp(const char* lhs, const char* rhs) {
+    int result = 0;
+    while (!result && *lhs && *rhs) {
+        result = tolower(*lhs++) - tolower(*rhs++);
+    }
+    if (!result) {
+        if (*lhs) {
+            return 1;
+        } else if (*rhs) {
+            return -1;
+        }
+        return 0;
+    }
+    return result;
+}
+
 
 static constexpr const EventBits_t wifi_connected_bit = BIT0;
 static constexpr const EventBits_t wifi_fail_bit = BIT1;
@@ -191,8 +198,8 @@ static char* httpd_url_encode(char* enc, size_t size, const char* s,
             }
         }
     }
-    if(size) {
-        *enc='\0';
+    if (size) {
+        *enc = '\0';
     }
     return result;
 }
@@ -339,7 +346,7 @@ static void httpd_send_expr(int expr, void* arg) {
     httpd_send_chunked(buf, strlen(buf), arg);
 }
 static void httpd_send_expr(float expr, void* arg) {
-    if(isnan(expr)) {
+    if (isnan(expr)) {
         return;
     }
     char buf[64] = {0};
@@ -372,13 +379,47 @@ static void httpd_send_expr(const char* expr, void* arg) {
     }
     httpd_send_chunked(expr, strlen(expr), arg);
 }
+
+typedef struct {
+    httpd_req_t *req;
+    size_t remaining;
+    char buffer[1024];
+    char working[1025];
+    size_t buffer_size;
+    size_t buffer_pos;
+} httpd_recv_buffer_t;
+static int httpd_buffered_read(void* state) {
+    httpd_recv_buffer_t* rfb = (httpd_recv_buffer_t*)state;
+    if(rfb->buffer_pos>=rfb->buffer_size) {
+        if(!rfb->remaining) {
+            return -1;
+        }
+        vTaskDelay(5);
+        int r=httpd_req_recv(rfb->req,rfb->buffer,rfb->remaining<=sizeof(rfb->buffer)?rfb->remaining:sizeof(rfb->buffer));
+        if(r<1) {
+            return -1;
+        }
+        
+        rfb->buffer_size = r;
+        rfb->remaining -= r;
+        rfb->buffer_pos = 0;
+        if(rfb->buffer_size==0) { 
+            return -1;
+        }
+    }
+    return rfb->buffer[rfb->buffer_pos++];
+}
 static esp_err_t httpd_request_handler(httpd_req_t* req) {
     // match the handler
     int handler_index = www_response_handler_match(req->uri);
     httpd_context resp_arg_data;
     httpd_context* resp_arg;
-    if (req->method == HTTP_GET) {  // async
-        if (handler_index == 3) {
+    
+    if (req->method == HTTP_GET || req->method == HTTP_POST) {  // async
+        if (handler_index == 4) {
+            
+            bool is_upload = req->method != HTTP_GET;
+
             bool is_sdcard = 0 == strncmp(req->uri, "/sdcard/", 8);
             bool is_spiffs = false;
             if (!is_sdcard) {
@@ -386,21 +427,118 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
             }
             char path[513];
             const char* sze = strchr(req->uri, '?');
-            size_t len = sze == nullptr ? strlen(req->uri) : sze - req->uri + 1;
+            size_t path_len = sze == nullptr ? strlen(req->uri) : sze - req->uri + 1;
+
+            httpd_url_decode(path, path_len, req->uri);
+            path[path_len] = '\0';
+            if(is_upload) {
+                char ctype[256];
+                FILE *fcur=NULL;
+                httpd_req_get_hdr_value_str(req,"Content-Type",ctype,sizeof(ctype));
+                char* be=strstr(ctype,"boundary=");
+                if(be!=nullptr) {
+                    be+=9;
+                    while(*be==' ') {
+                        ++be;
+                    }
+                    // not enough stack for this:
+                    httpd_recv_buffer_t* recb = (httpd_recv_buffer_t*)malloc(sizeof(httpd_recv_buffer_t));
+                    if(recb==nullptr) {
+                        goto error; // out of memory;
+                    }
+                    memset(recb,0,sizeof(httpd_recv_buffer_t));
+                    recb->req = req;
+                    recb->remaining = req->content_len;
+                    mpm_context_t ctx;
+                    mpm_init(be,0,httpd_buffered_read,recb,&ctx);
+                    size_t size = 1024;
+                    mpm_node_t node;
+                    char disposition=0;
+                    while((node=mpm_parse(&ctx,recb->working,&size))>0) {
+                        switch(node) {
+                            case MPM_HEADER_NAME_PART:
+                                recb->working[size]='\0';
+                                disposition=0==my_stricmp(recb->working,"Content-Disposition");
+                                break;
+                            case MPM_HEADER_VALUE_PART:
+                                if(disposition) {
+                                    char state = 0;
+                                    const char* sz = recb->working;
+                                    recb->working[size]=0;
+                                    char end = 0;
+                                    do {
+                                        const char* sze = strpbrk(sz,";=");
+                                        if(sze==NULL) {
+                                            end = 1;
+                                            sze = sz+strlen(sz);
+                                        } 
+                                        recb->working[(sz-recb->working)+(sze-sz)]='\0';
+                                        while(*sz==' ') ++sz;
+                                        switch(state) {
+                                            case 0:
+                                                if(0==my_stricmp(sz,"form-data")) {
+                                                    state = 1;
+                                                }
+                                                break;
+                                            case 1:
+                                                if(0==my_stricmp(sz,"filename")) {
+                                                    state = 2;
+                                                }
+                                                break;
+                                            case 2:
+                                                if(*sz=='\"') {
+                                                    ++sz;
+                                                    if(*sz) {
+                                                        recb->working[(sz-recb->working)+strlen(sz)-1]='\0';
+                                                    }
+                                                } else {
+                                                    recb->working[(sz-recb->working)+strlen(sz)]='\0';
+                                                }
+                                                strcat(path,sz);
+                                                fcur=fopen(path,"wb");
+                                                state = 3;
+                                        }
+                                        sz+=strlen(sz)+1;
+                                    } while(!end);
+                                }
+                                break;
+                            case MPM_CONTENT_PART:
+                                if(fcur!=nullptr) {
+                                    fwrite(recb->working,1,size,fcur);
+                                }
+                                break;
+                            case MPM_CONTENT_END:
+                                if(fcur!=NULL) {
+                                    fclose(fcur);
+                                    fcur = NULL;
+                                }
+                                path[path_len]='\0';
+                                break;
+                                        
+                        }
+                        size = 1024;
+                    }
+                    if(recb!=nullptr) { free(recb);recb = nullptr; }
+                }
+                
             
-            httpd_url_decode(path, len, req->uri);
-            path[len]='\0';
+            }
+            fputs("path: ",stdout);
+            puts(path);
             stat_t st;
-            if (0 == stat(path, &st) &&((st.st_mode & S_IFMT)!=S_IFDIR)) {
+            if (0 == stat(path, &st) && ((st.st_mode & S_IFMT) != S_IFDIR)) {
                 // is file
                 static const char* header1 =
                     "HTTP/1.1 200 OK\r\nContent-Disposition: attachment; "
                     "filename=\"";
-                fputs(header1,stdout);
-                const char* szpfn = path+8;
-                const char* szfn = strrchr(szpfn,'/');
+                fputs(header1, stdout);
+                const char* szpfn = path + 8;
+                const char* szfn = strrchr(szpfn, '/');
                 httpd_send(req, header1, strlen(header1));
-                if(szfn!=nullptr) ++szfn; else szfn = szpfn;
+                if (szfn != nullptr)
+                    ++szfn;
+                else
+                    szfn = szpfn;
                 httpd_send(req, szfn, strlen(szfn));
                 static const char* header2 = "\"\r\nContent-Length: ";
                 httpd_send(req, header2, strlen(header2));
@@ -411,10 +549,10 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                 static const char* header3 = "\r\n\r\n";
                 httpd_send(req, header3, strlen(header3));
                 FILE* file = fopen(path, "rb");
-                if(!file) {
+                if (!file) {
                     return ESP_FAIL;
                 }
-                l = fread(buf,1,sizeof(buf), file);
+                l = fread(buf, 1, sizeof(buf), file);
                 while (l > 0) {
                     httpd_send(req, buf, l);
                     l = fread(buf, 1, sizeof(buf), file);
@@ -440,6 +578,8 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
         if (handler_index == -1) {
             // no match, send a 404
             handler_fn = www_content_404_clasp;
+        } else if (handler_index==-2) {
+            handler_fn = www_content_500_clasp;
         } else {
             // choose the handler
             handler_fn =
@@ -458,6 +598,8 @@ synchronous:
     resp_arg = &resp_arg_data;
     if (handler_index == -1) {
         www_content_404_clasp(resp_arg);
+    } else if(handler_index==-2){
+        www_content_500_clasp(resp_arg);
     } else {
         www_response_handlers[handler_index].handler(resp_arg);
     }

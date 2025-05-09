@@ -22,6 +22,8 @@
     </head>
     <body>
         <table style="border: 0; padding: 10px 10px 10px 10px;">
+            <tr><td colspan="3">Upload</td></tr>
+            <tr><td colspan="3"><form action="." method="post" enctype="multipart/form-data"><input type="file" name="file"/><input type="submit" value="upload"/></form></td></tr>
             <tr><td>Name<td><td>Size</td><td>Last Modified</td></tr>
             <tr><td><a href=".">.</a></td><td>&nbsp;</td><td>&nbsp;</td></tr>
         <%if(!(path[0]=='/' && path[1]=='\0')){%>

@@ -187,10 +187,13 @@ void www_content_fs_clasp(void* resp_arg) {
     httpd_send_block("78\r\n\r\n    <head>\r\n        <meta name=\"viewport\" content=\"width="
         "device-width, initial-scale=1.0\" />\r\n        <title>Browsing \r\n", 126, resp_arg);
     httpd_send_expr(path, resp_arg);
-    httpd_send_block("102\r\n</title>\r\n    </head>\r\n    <body>\r\n        <table style=\"b"
-        "order: 0; padding: 10px 10px 10px 10px;\">\r\n            <tr><td>Name<td><td>Size<"
-        "/td><td>Last Modified</td></tr>\r\n            <tr><td><a href=\".\">.</a></td><td>&"
-        "nbsp;</td><td>&nbsp;</td></tr>\r\n        \r\n", 265, resp_arg);
+    httpd_send_block("1E9\r\n</title>\r\n    </head>\r\n    <body>\r\n        <table style=\"b"
+        "order: 0; padding: 10px 10px 10px 10px;\">\r\n            <tr><td colspan=\"3\">Uploa"
+        "d</td></tr>\r\n            <tr><td colspan=\"3\"><form action=\".\" method=\"post\" enct"
+        "ype=\"multipart/form-data\"><input type=\"file\" name=\"file\"/><input type=\"submit\" v"
+        "alue=\"upload\"/></form></td></tr>\r\n            <tr><td>Name<td><td>Size</td><td>L"
+        "ast Modified</td></tr>\r\n            <tr><td><a href=\".\">.</a></td><td>&nbsp;</td"
+        "><td>&nbsp;</td></tr>\r\n        \r\n", 496, resp_arg);
     if(!(path[0]=='/' && path[1]=='\0')){
     httpd_send_block("5B\r\n\r\n            <tr><td><a href=\"..\">..</a></td><td>&nbsp;</t"
         "d><td>&nbsp;</td></tr>\r\n        \r\n", 97, resp_arg);

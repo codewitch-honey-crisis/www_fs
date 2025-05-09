@@ -20,8 +20,5 @@ static void httpd_send_expr(time_t expr, void* arg);
 static void httpd_send_expr(const char* expr, void* arg);
 static char *httpd_url_encode(char *enc, size_t size, const char *s, const char *table);
 typedef struct stat stat_t;
-static const int fs_id(dirent* d);
-static const char* fs_name(dirent* d);
-static bool fs_is_dir(dirent* d);
 static stat_t fs_stat(const char* path);
 #endif
