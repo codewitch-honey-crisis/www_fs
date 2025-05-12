@@ -471,47 +471,29 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                                     break;
                                 case MPM_HEADER_VALUE_PART:
                                     if(disposition) {
-                                        char state = 0;
                                         const char* sz = recb->working;
                                         recb->working[size]=0;
-                                        char end = 0;
-                                        do {
-                                            const char* sze = strpbrk(sz,";=");
-                                            if(sze==NULL) {
-                                                end = 1;
-                                                sze = sz+strlen(sz);
-                                            } 
-                                            recb->working[(sz-recb->working)+(sze-sz)]='\0';
-                                            while(*sz==' ') ++sz;
-                                            switch(state) {
-                                                case 0:
-                                                    if(0==my_stricmp(sz,"form-data")) {
-                                                        state = 1;
+                                        const char* szeq = strchr(sz,'=');
+                                        if(szeq!=nullptr) {
+                                            recb->working[szeq-sz]='\0';
+                                            ++szeq;
+                                            if(0==my_stricmp(sz,"filename")) {
+                                                if(*szeq=='\"') {
+                                                    ++szeq;
+                                                    if(*szeq) {
+                                                        recb->working[(szeq-recb->working)+strlen(szeq)-1]='\0';
                                                     }
-                                                    break;
-                                                case 1:
-                                                    if(0==my_stricmp(sz,"filename")) {
-                                                        state = 2;
-                                                    }
-                                                    break;
-                                                case 2:
-                                                    if(*sz=='\"') {
-                                                        ++sz;
-                                                        if(*sz) {
-                                                            recb->working[(sz-recb->working)+strlen(sz)-1]='\0';
-                                                        }
-                                                    } else {
-                                                        recb->working[(sz-recb->working)+strlen(sz)]='\0';
-                                                    }
-                                                    strcat(path,sz);
-                                                    remove(path); // delete if it exists;
-                                                    fcur=fopen(path,"wb");
-                                                    state = 3;
+                                                } else {
+                                                    recb->working[(szeq-recb->working)+strlen(szeq)]='\0';
+                                                }
+                                                strcat(path,szeq);
+                                                remove(path); // delete if it exists;
+                                                fcur=fopen(path,"wb");
                                             }
-                                            sz+=strlen(sz)+1;
-                                        } while(!end);
+                                        }
                                     }
                                     break;
+                                
                                 case MPM_CONTENT_PART:
                                     if(fcur!=nullptr) {
                                         fwrite(recb->working,1,size,fcur);
