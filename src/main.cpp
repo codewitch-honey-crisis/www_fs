@@ -26,9 +26,8 @@
 #include "esp_spiffs.h"
 #include "esp_vfs_fat.h"
 #include "esp_wifi.h"
-#include "nvs_flash.h"
-
 #include "mpm_parser.h"
+#include "nvs_flash.h"
 
 // used by the page handlers
 struct httpd_context {
@@ -68,7 +67,6 @@ static stat_t fs_stat(const char* path) {
 using namespace esp_idf;  // devices
 #endif
 
-
 static int my_stricmp(const char* lhs, const char* rhs) {
     int result = 0;
     while (!result && *lhs && *rhs) {
@@ -84,7 +82,6 @@ static int my_stricmp(const char* lhs, const char* rhs) {
     }
     return result;
 }
-
 
 static constexpr const EventBits_t wifi_connected_bit = BIT0;
 static constexpr const EventBits_t wifi_fail_bit = BIT1;
@@ -381,7 +378,7 @@ static void httpd_send_expr(const char* expr, void* arg) {
 }
 
 typedef struct {
-    httpd_req_t *req;
+    httpd_req_t* req;
     size_t remaining;
     char buffer[1024];
     char working[1025];
@@ -389,26 +386,29 @@ typedef struct {
     size_t buffer_pos;
 } httpd_recv_buffer_t;
 static int httpd_buffered_read(void* state) {
-    if(state==nullptr) {
+    if (state == nullptr) {
         return -1;
     }
     httpd_recv_buffer_t* rfb = (httpd_recv_buffer_t*)state;
-    if(rfb->buffer_pos>=rfb->buffer_size) {
-        if(!rfb->remaining) {
+    if (rfb->buffer_pos >= rfb->buffer_size) {
+        if (!rfb->remaining) {
             return -1;
         }
         vTaskDelay(5);
-        int r=httpd_req_recv(rfb->req,rfb->buffer,rfb->remaining<=sizeof(rfb->buffer)?rfb->remaining:sizeof(rfb->buffer));
-        if(r<1) {
+        int r = httpd_req_recv(rfb->req, rfb->buffer,
+                               rfb->remaining <= sizeof(rfb->buffer)
+                                   ? rfb->remaining
+                                   : sizeof(rfb->buffer));
+        if (r < 1) {
             rfb->buffer_size = 0;
             rfb->buffer_pos = 0;
             return -1;
         }
-        
+
         rfb->buffer_size = r;
         rfb->remaining -= r;
         rfb->buffer_pos = 0;
-        if(rfb->buffer_size==0) { 
+        if (rfb->buffer_size == 0) {
             return -1;
         }
     }
@@ -421,10 +421,9 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
     int handler_index = www_response_handler_match(req->uri);
     httpd_context resp_arg_data;
     httpd_context* resp_arg;
-    
+
     if (req->method == HTTP_GET || req->method == HTTP_POST) {  // async
         if (handler_index == 4) {
-            
             bool is_upload = req->method != HTTP_GET;
 
             bool is_sdcard = 0 == strncmp(req->uri, "/sdcard/", 8);
@@ -434,111 +433,126 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
             }
             char path[513];
             const char* sze = strchr(req->uri, '?');
-            size_t path_len = sze == nullptr ? strlen(req->uri) : sze - req->uri + 1;
+            size_t path_len =
+                sze == nullptr ? strlen(req->uri) : sze - req->uri + 1;
 
             httpd_url_decode(path, path_len, req->uri);
-            
+
             path[path_len] = '\0';
-            if(is_upload) {
+            if (is_upload) {
                 char ctype[256];
-                FILE *fcur=NULL;
-                httpd_req_get_hdr_value_str(req,"Content-Type",ctype,sizeof(ctype));
-                char* be=strstr(ctype,"boundary=");
-                if(be!=nullptr) {
-                    be+=9;
-                    while(*be==' ') {
+                FILE* fcur = NULL;
+                httpd_req_get_hdr_value_str(req, "Content-Type", ctype,
+                                            sizeof(ctype));
+                char* be = strstr(ctype, "boundary=");
+                if (be != nullptr) {
+                    be += 9;
+                    while (*be == ' ') {
                         ++be;
                     }
                     // not enough stack for this:
-                    httpd_recv_buffer_t* recb = (httpd_recv_buffer_t*)malloc(sizeof(httpd_recv_buffer_t));
-                    if(recb==nullptr) {
-                        goto error; // out of memory;
+                    httpd_recv_buffer_t* recb = (httpd_recv_buffer_t*)malloc(
+                        sizeof(httpd_recv_buffer_t));
+                    if (recb == nullptr) {
+                        goto error;  // out of memory;
                     }
-                    memset(recb,0,sizeof(httpd_recv_buffer_t));
+                    memset(recb, 0, sizeof(httpd_recv_buffer_t));
                     recb->req = req;
                     recb->remaining = req->content_len;
-                    if(recb->remaining>0) {
+                    if (recb->remaining > 0) {
                         mpm_context_t ctx;
-                        mpm_init(be,0,httpd_buffered_read,recb,&ctx);
+                        mpm_init(be, 0, httpd_buffered_read, recb, &ctx);
                         size_t size = 1024;
                         mpm_node_t node;
-                        char disposition=0;
-                        while((node=mpm_parse(&ctx,recb->working,&size))>0) {
-                            switch(node) {
+                        char disposition = 0;
+                        while ((node = mpm_parse(&ctx, recb->working, &size)) >
+                               0) {
+                            switch (node) {
                                 case MPM_HEADER_NAME_PART:
-                                    recb->working[size]='\0';
-                                    disposition=0==my_stricmp(recb->working,"Content-Disposition");
+                                    recb->working[size] = '\0';
+                                    disposition =
+                                        0 == my_stricmp(recb->working,
+                                                        "Content-Disposition");
                                     break;
                                 case MPM_HEADER_VALUE_PART:
-                                    if(disposition) {
+                                    if (disposition) {
                                         const char* sz = recb->working;
-                                        recb->working[size]=0;
-                                        const char* szeq = strchr(sz,'=');
-                                        if(szeq!=nullptr) {
-                                            recb->working[szeq-sz]='\0';
+                                        recb->working[size] = 0;
+                                        const char* szeq = strchr(sz, '=');
+                                        if (szeq != nullptr) {
+                                            recb->working[szeq - sz] = '\0';
                                             ++szeq;
-                                            if(0==my_stricmp(sz,"filename")) {
-                                                if(*szeq=='\"') {
+                                            if (0 ==
+                                                my_stricmp(sz, "filename")) {
+                                                if (*szeq == '\"') {
                                                     ++szeq;
-                                                    if(*szeq) {
-                                                        recb->working[(szeq-recb->working)+strlen(szeq)-1]='\0';
+                                                    if (*szeq) {
+                                                        recb->working
+                                                            [(szeq -
+                                                              recb->working) +
+                                                             strlen(szeq) - 1] =
+                                                            '\0';
                                                     }
                                                 } else {
-                                                    recb->working[(szeq-recb->working)+strlen(szeq)]='\0';
+                                                    recb->working
+                                                        [(szeq -
+                                                          recb->working) +
+                                                         strlen(szeq)] = '\0';
                                                 }
-                                                strcat(path,szeq);
-                                                remove(path); // delete if it exists;
-                                                fcur=fopen(path,"wb");
+                                                strcat(path, szeq);
+                                                remove(path);  // delete if it
+                                                               // exists;
+                                                fcur = fopen(path, "wb");
                                             }
                                         }
                                     }
                                     break;
-                                
+
                                 case MPM_CONTENT_PART:
-                                    if(fcur!=nullptr) {
-                                        fwrite(recb->working,1,size,fcur);
+                                    if (fcur != nullptr) {
+                                        fwrite(recb->working, 1, size, fcur);
                                     }
                                     break;
                                 case MPM_CONTENT_END:
-                                    if(fcur!=NULL) {
+                                    if (fcur != NULL) {
                                         fclose(fcur);
                                         fcur = NULL;
                                     }
-                                    path[path_len]='\0';
+                                    path[path_len] = '\0';
                                     break;
-                                            
                             }
                             size = 1024;
                         }
                     }
-                    if(recb!=nullptr) { free(recb);recb = nullptr; }
-                } else { // standard for post, probably delete
-                    char *data = (char*)malloc(req->content_len+1);
-                    if(data==nullptr) {
+                    if (recb != nullptr) {
+                        free(recb);
+                        recb = nullptr;
+                    }
+                } else {  // standard for post, probably delete
+                    char* data = (char*)malloc(req->content_len + 1);
+                    if (data == nullptr) {
                         goto error;
                     }
-                    httpd_req_recv(req,data,req->content_len);
-                    data[req->content_len]='\0';
-                    char* sz = strstr(data,"delete=");
-                    if(sz!=nullptr) {
-                        sz+=7;
-                        char* sze = strpbrk(sz,"&;");
-                        if(sze==nullptr) {
-                            sze = sz+strlen(sz);
+                    httpd_req_recv(req, data, req->content_len);
+                    data[req->content_len] = '\0';
+                    char* sz = strstr(data, "delete=");
+                    if (sz != nullptr) {
+                        sz += 7;
+                        char* sze = strpbrk(sz, "&;");
+                        if (sze == nullptr) {
+                            sze = sz + strlen(sz);
                         } else {
-                            *sze='\0';
+                            *sze = '\0';
                         }
-                        strcat(path,sz);
-                        fputs("deleting ",stdout);
+                        strcat(path, sz);
+                        fputs("deleting ", stdout);
                         puts(path);
                         remove(path);
-                        path[path_len]='\0';
-                        
+                        path[path_len] = '\0';
                     }
                     free(data);
-
                 }
-            } 
+            }
             stat_t st;
             if (0 == stat(path, &st) && ((st.st_mode & S_IFMT) != S_IFDIR)) {
                 // is file
@@ -574,13 +588,13 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                 return ESP_OK;
             } else {
                 DIR* d = opendir(path);
-                if(d!=nullptr) {
+                if (d != nullptr) {
                     closedir(d);
-                    if(strrchr(path,'/')!=path+path_len-1) {
+                    if (strrchr(path, '/') != path + path_len - 1) {
                         handler_index = -1;
                     }
                 } else {
-                    handler_index=-1;
+                    handler_index = -1;
                 }
             }
         }
@@ -601,14 +615,14 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
         if (handler_index == -1) {
             // no match, send a 404
             handler_fn = www_content_404_clasp;
-        } else if (handler_index==-2) {
+        } else if (handler_index == -2) {
             handler_fn = www_content_500_clasp;
         } else {
             // choose the handler
             handler_fn =
                 (httpd_work_fn_t)www_response_handlers[handler_index].handler;
         }
-    
+
         // and off we go.
         httpd_queue_work(req->handle, handler_fn, resp_arg);
         return ESP_OK;
@@ -622,7 +636,7 @@ synchronous:
     resp_arg = &resp_arg_data;
     if (handler_index == -1) {
         www_content_404_clasp(resp_arg);
-    } else if(handler_index==-2){
+    } else if (handler_index == -2) {
         www_content_500_clasp(resp_arg);
     } else {
         www_response_handlers[handler_index].handler(resp_arg);
