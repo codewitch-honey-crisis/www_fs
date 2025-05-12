@@ -545,8 +545,6 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                             *sze = '\0';
                         }
                         strcat(path, sz);
-                        fputs("deleting ", stdout);
-                        puts(path);
                         remove(path);
                         path[path_len] = '\0';
                     }
