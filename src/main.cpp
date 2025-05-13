@@ -51,17 +51,6 @@ struct httpd_context {
 
 // these are globals we use in the page
 
-const float example_star_rating = 3.8;
-const char* episode_title = "Pilot";
-const char* show_title = "Burn Notice";
-const unsigned char episode_number = 1;
-const unsigned char season_number = 1;
-const char* episode_description =
-    "While on assignment, agent Michael Westen gets a \"Burn Notice\" and "
-    "becomes untouchable. Having no idea what or who triggered his demise, "
-    "Michael returns to his hometown, Miami, determined to find out the reason "
-    "for his sudden termination.";
-
 char enc_rfc3986[256] = {0};
 char enc_html5[256] = {0};
 
