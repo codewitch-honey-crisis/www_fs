@@ -182,7 +182,7 @@ void www_content_fs_clasp(void* resp_arg) {
         DIR* dir = opendir(path);
         char tmp[257]={0};
         char tmp2[257]={0};
-        memset(tmp2,0,512);
+        memset(tmp2,0,sizeof(tmp2));
     
     httpd_send_block("78\r\n\r\n    <head>\r\n        <meta name=\"viewport\" content=\"width="
         "device-width, initial-scale=1.0\" />\r\n        <title>Browsing \r\n", 126, resp_arg);

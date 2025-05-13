@@ -14,7 +14,7 @@
     DIR* dir = opendir(path);
     char tmp[257]={0};
     char tmp2[257]={0};
-    memset(tmp2,0,512);
+    memset(tmp2,0,sizeof(tmp2));
 %>
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
