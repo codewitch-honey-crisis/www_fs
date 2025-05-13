@@ -381,6 +381,7 @@ typedef struct {
     httpd_req_t* req;
     size_t remaining;
     size_t length;
+    uint32_t start;
     int last_out;
     char buffer[8192];
     char working[8193];
@@ -392,19 +393,21 @@ static int httpd_buffered_read(void* state) {
         return -1;
     }
     httpd_recv_buffer_t* rfb = (httpd_recv_buffer_t*)state;
+    char buf[32];
+    int num;
+    char result;
+    if (!rfb->remaining) {
+        goto done;
+    }
     if (rfb->buffer_pos >= rfb->buffer_size) {
-        if (!rfb->remaining) {
-            return -1;
-        }
+        
         vTaskDelay(5);
         int r = httpd_req_recv(rfb->req, rfb->buffer,
                                rfb->remaining <= sizeof(rfb->buffer)
                                    ? rfb->remaining
                                    : sizeof(rfb->buffer));
-        int num = ((float)(rfb->length-rfb->remaining)/(float)rfb->length)*100;
+        num = ((float)(rfb->length-rfb->remaining)/(float)rfb->length)*100;
         if(num!=rfb->last_out) {
-            char buf[32];
-        
             itoa(num,buf,10);
             fputs("Uploading ",stdout);
             fputs(buf,stdout);
@@ -424,9 +427,19 @@ static int httpd_buffered_read(void* state) {
             return -1;
         }
     }
-    char result = rfb->buffer[rfb->buffer_pos];
+    result = rfb->buffer[rfb->buffer_pos];
     ++rfb->buffer_pos;
     return result;
+done:
+    if(rfb->length!=0) {
+        fputs("Uploading complete in ",stdout);
+        num = (((float)pdTICKS_TO_MS(xTaskGetTickCount())-(float)rfb->start)/1000.f+.5);
+        itoa(num,buf,10);
+        fputs(buf,stdout);
+        puts(" seconds");
+        rfb->length=0;
+    }
+    return -1;
 }
 static esp_err_t httpd_request_handler(httpd_req_t* req) {
     // match the handler
@@ -471,6 +484,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                     memset(recb, 0, sizeof(httpd_recv_buffer_t));
                     recb->req = req;
                     recb->remaining = recb->length = req->content_len;
+                    recb->start = pdTICKS_TO_MS(xTaskGetTickCount());
                     if (recb->remaining > 0) {
                         mpm_context_t ctx;
                         mpm_init(be, 0, httpd_buffered_read, recb, &ctx);
