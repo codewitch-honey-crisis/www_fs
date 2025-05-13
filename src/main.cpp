@@ -1,6 +1,7 @@
 // put wifi.txt on SD (M5Stack core2) or alternatively on SPIFFS (any ESP32)
 // first line is SSID, next line is password
-
+#define UPLOAD_BUFFER_SIZE 8192
+#define UPLOAD_WORKING_SIZE 8192
 #ifdef M5STACK_CORE2
 #define SPI_PORT SPI3_HOST
 #define SPI_CLK 18
@@ -383,8 +384,8 @@ typedef struct {
     size_t length;
     uint32_t start;
     int last_out;
-    char buffer[8192];
-    char working[8193];
+    char buffer[UPLOAD_BUFFER_SIZE];
+    char working[UPLOAD_WORKING_SIZE+1];
     size_t buffer_size;
     size_t buffer_pos;
 } httpd_recv_buffer_t;
@@ -485,7 +486,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                     if (recb->remaining > 0) {
                         mpm_context_t ctx;
                         mpm_init(be, 0, httpd_buffered_read, recb, &ctx);
-                        size_t size = 8192;
+                        size_t size = UPLOAD_WORKING_SIZE;
                         mpm_node_t node;
                         char disposition = 0;
                         while ((node = mpm_parse(&ctx, recb->working, &size)) >
@@ -544,7 +545,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                                     path[path_len] = '\0';
                                     break;
                             }
-                            size = 8192;
+                            size = UPLOAD_WORKING_SIZE;
                         }
                     }
                     if (recb != nullptr) {
