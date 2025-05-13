@@ -380,8 +380,10 @@ static void httpd_send_expr(const char* expr, void* arg) {
 typedef struct {
     httpd_req_t* req;
     size_t remaining;
-    char buffer[1024];
-    char working[1025];
+    size_t length;
+    int last_out;
+    char buffer[8192];
+    char working[8193];
     size_t buffer_size;
     size_t buffer_pos;
 } httpd_recv_buffer_t;
@@ -399,6 +401,16 @@ static int httpd_buffered_read(void* state) {
                                rfb->remaining <= sizeof(rfb->buffer)
                                    ? rfb->remaining
                                    : sizeof(rfb->buffer));
+        int num = ((float)(rfb->length-rfb->remaining)/(float)rfb->length)*100;
+        if(num!=rfb->last_out) {
+            char buf[32];
+        
+            itoa(num,buf,10);
+            fputs("Uploading ",stdout);
+            fputs(buf,stdout);
+            puts("% complete");
+            rfb->last_out = num;
+        }
         if (r < 1) {
             rfb->buffer_size = 0;
             rfb->buffer_pos = 0;
@@ -458,11 +470,11 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                     }
                     memset(recb, 0, sizeof(httpd_recv_buffer_t));
                     recb->req = req;
-                    recb->remaining = req->content_len;
+                    recb->remaining = recb->length = req->content_len;
                     if (recb->remaining > 0) {
                         mpm_context_t ctx;
                         mpm_init(be, 0, httpd_buffered_read, recb, &ctx);
-                        size_t size = 1024;
+                        size_t size = 8192;
                         mpm_node_t node;
                         char disposition = 0;
                         while ((node = mpm_parse(&ctx, recb->working, &size)) >
@@ -521,7 +533,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                                     path[path_len] = '\0';
                                     break;
                             }
-                            size = 1024;
+                            size = 8192;
                         }
                     }
                     if (recb != nullptr) {
@@ -545,6 +557,8 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                             *sze = '\0';
                         }
                         strcat(path, sz);
+                        fputs("Deleting ",stdout);
+                        puts(path);
                         remove(path);
                         path[path_len] = '\0';
                     }
@@ -554,6 +568,8 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
             stat_t st;
             if (0 == stat(path, &st) && ((st.st_mode & S_IFMT) != S_IFDIR)) {
                 // is file
+                fputs("Downloading ",stdout);
+                puts(path);
                 static const char* header1 =
                     "HTTP/1.1 200 OK\r\nContent-Disposition: attachment; "
                     "filename=\"";
