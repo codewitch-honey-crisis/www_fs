@@ -396,10 +396,11 @@ static int httpd_buffered_read(void* state) {
     char buf[32];
     int num;
     char result;
-    if (!rfb->remaining) {
-        goto done;
-    }
     if (rfb->buffer_pos >= rfb->buffer_size) {
+        if (!rfb->remaining) {
+            goto done;
+        }
+        
         
         vTaskDelay(5);
         int r = httpd_req_recv(rfb->req, rfb->buffer,
@@ -417,6 +418,10 @@ static int httpd_buffered_read(void* state) {
         if (r < 1) {
             rfb->buffer_size = 0;
             rfb->buffer_pos = 0;
+            if(r==0) {
+                goto done;
+            }
+            rfb->remaining = 0;
             return -1;
         }
 
@@ -424,21 +429,13 @@ static int httpd_buffered_read(void* state) {
         rfb->remaining -= r;
         rfb->buffer_pos = 0;
         if (rfb->buffer_size == 0) {
-            return -1;
+            goto done;
         }
     }
     result = rfb->buffer[rfb->buffer_pos];
     ++rfb->buffer_pos;
     return result;
 done:
-    if(rfb->length!=0) {
-        fputs("Uploading complete in ",stdout);
-        num = (((float)pdTICKS_TO_MS(xTaskGetTickCount())-(float)rfb->start)/1000.f+.5);
-        itoa(num,buf,10);
-        fputs(buf,stdout);
-        puts(" seconds");
-        rfb->length=0;
-    }
     return -1;
 }
 static esp_err_t httpd_request_handler(httpd_req_t* req) {
@@ -551,6 +548,12 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                         }
                     }
                     if (recb != nullptr) {
+                        char buf[32];
+                        fputs("Uploading complete in ",stdout);
+                        int num = (((float)pdTICKS_TO_MS(xTaskGetTickCount())-(float)recb->start)/1000.f+.5);
+                        itoa(num,buf,10);
+                        fputs(buf,stdout);
+                        puts(" seconds");
                         free(recb);
                         recb = nullptr;
                     }
