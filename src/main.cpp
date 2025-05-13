@@ -1,3 +1,4 @@
+//#define NO_STORE_UPLOAD
 // put wifi.txt on SD (M5Stack core2) or alternatively on SPIFFS (any ESP32)
 // first line is SSID, next line is password
 #define UPLOAD_BUFFER_SIZE 8192
@@ -8,8 +9,18 @@
 #define SPI_MISO 38
 #define SPI_MOSI 23
 
-#define SD_PORT SPI3_HOST
+#define SD_PORT SPI_PORT
 #define SD_CS 4
+#endif
+
+#ifdef C6DEVKITC1
+#define SPI_PORT SPI2_HOST
+#define SPI_CLK 6
+#define SPI_MISO 19
+#define SPI_MOSI 20
+
+#define SD_PORT SPI_PORT
+#define SD_CS 19
 #endif
 #include <ctype.h>
 #include <math.h>
@@ -526,7 +537,11 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                                                 strcat(path, szeq);
                                                 remove(path);  // delete if it
                                                                // exists;
+#ifndef NO_STORE_UPLOAD
                                                 fcur = fopen(path, "wb");
+#else
+                                                fcur = nullptr;
+#endif
                                             }
                                         }
                                     }
@@ -752,7 +767,7 @@ static void spi_init() {
     buscfg.max_transfer_sz = 512 + 8;
 
     // Initialize the SPI bus on VSPI (SPI3)
-    spi_bus_initialize(SPI_PORT, &buscfg, SPI_DMA_CH_AUTO);
+    ESP_ERROR_CHECK(spi_bus_initialize(SPI_PORT, &buscfg, SPI_DMA_CH_AUTO));
 }
 
 #ifdef SD_CS
