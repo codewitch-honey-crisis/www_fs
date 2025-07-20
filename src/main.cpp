@@ -442,6 +442,7 @@ done:
 static esp_err_t httpd_request_handler(httpd_req_t* req) {
     // match the handler
     int handler_index = www_response_handler_match(req->uri);
+    
     httpd_context resp_arg_data;
     httpd_context* resp_arg;
 
