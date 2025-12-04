@@ -450,26 +450,24 @@ done:
 static esp_err_t httpd_request_handler(httpd_req_t* req) {
     // match the handler
     int handler_index = www_response_handler_match(req->uri);
-    
-    httpd_context resp_arg_data;
-    httpd_context* resp_arg;
-
-    if (req->method == HTTP_GET || req->method == HTTP_POST) {  // async
-        if (handler_index == 4) {
+    // we keep our response context on the stack if we can
+    httpd_context resp_arg;
+    // but for async responses it must be on the heap
+    httpd_context* resp_arg_async;
+    if (req->method == HTTP_GET || req->method == HTTP_POST) {  // async is only for GET and POST
+        if (handler_index == 4) { // this is our FS handler
             bool is_upload = req->method != HTTP_GET;
-
             bool is_sdcard = 0 == strncmp(req->uri, "/sdcard/", 8);
             bool is_spiffs = false;
             if (!is_sdcard) {
                 is_spiffs = 0 == strncmp(req->uri, "/spiffs/", 8);
             }
+            // get the filepath from the path and query string
             char path[513];
             const char* sze = strchr(req->uri, '?');
             size_t path_len =
                 sze == nullptr ? strlen(req->uri) : sze - req->uri + 1;
-
             httpd_url_decode(path, path_len, req->uri);
-
             path[path_len] = '\0';
             if (is_upload) {
                 char ctype[256];
@@ -477,6 +475,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                 httpd_req_get_hdr_value_str(req, "Content-Type", ctype,
                                             sizeof(ctype));
                 char* be = strstr(ctype, "boundary=");
+                // this is multipart MIME upload
                 if (be != nullptr) {
                     be += 9;
                     while (*be == ' ') {
@@ -493,11 +492,13 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                     recb->remaining = recb->length = req->content_len;
                     recb->start = pdTICKS_TO_MS(xTaskGetTickCount());
                     if (recb->remaining > 0) {
+                        // initialize our multipart mime parser
                         mpm_context_t ctx;
                         mpm_init(be, 0, httpd_buffered_read, recb, &ctx);
                         size_t size = UPLOAD_WORKING_SIZE;
                         mpm_node_t node;
-                        char disposition = 0;
+                        bool disposition = false;
+                        // parse the MIME data
                         while ((node = mpm_parse(&ctx, recb->working, &size)) >
                                0) {
                             switch (node) {
@@ -532,14 +533,18 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                                                           recb->working) +
                                                          strlen(szeq)] = '\0';
                                                 }
-                                                strcat(path, szeq);
+                                                if(*szeq!='\0') { 
+                                                    strcat(path, szeq);
 #ifndef NO_STORE_UPLOAD
-                                                remove(path);  // delete if it
-                                                               // exists;
-                                                fcur = fopen(path, "wb");
+                                                    remove(path);  // delete if it
+                                                                // exists;
+                                                    fcur = fopen(path, "wb");
 #else
-                                                fcur = nullptr;
+                                                    fcur = nullptr;
 #endif
+                                                } else {
+                                                    fcur = nullptr;
+                                                }
                                             }
                                         }
                                     }
@@ -571,7 +576,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                         free(recb);
                         recb = nullptr;
                     }
-                } else {  // standard for post, probably delete
+                } else {  // standard form post, probably delete
                     char* data = (char*)malloc(req->content_len + 1);
                     if (data == nullptr) {
                         goto error;
@@ -643,17 +648,17 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                 }
             }
         }
-        resp_arg = (httpd_context*)malloc(sizeof(httpd_context));
-        if (resp_arg == nullptr) {  // no memory
+        resp_arg_async = (httpd_context*)malloc(sizeof(httpd_context));
+        if (resp_arg_async == nullptr) {  // no memory
             // we can still do it synchronously
             goto synchronous;
         }
-        strncpy(resp_arg->path_and_query, req->uri, sizeof(req->uri));
-        resp_arg->handle = req->handle;
-        resp_arg->method = req->method;
-        resp_arg->fd = httpd_req_to_sockfd(req);
-        if (resp_arg->fd < 0) {  // error getting socket
-            free(resp_arg);
+        strncpy(resp_arg_async->path_and_query, req->uri, sizeof(req->uri));
+        resp_arg_async->handle = req->handle;
+        resp_arg_async->method = req->method;
+        resp_arg_async->fd = httpd_req_to_sockfd(req);
+        if (resp_arg_async->fd < 0) {  // error getting socket
+            free(resp_arg_async);
             goto error;
         }
         httpd_work_fn_t handler_fn;
@@ -669,34 +674,33 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
         }
 
         // and off we go.
-        httpd_queue_work(req->handle, handler_fn, resp_arg);
+        httpd_queue_work(req->handle, handler_fn, resp_arg_async);
         return ESP_OK;
     }
 synchronous:
     // must do it synchronously
-    resp_arg_data.fd = -1;
-    resp_arg_data.handle = req;
-    resp_arg_data.method = req->method;
-    strncpy(resp_arg_data.path_and_query, req->uri, sizeof(req->uri));
-    resp_arg = &resp_arg_data;
+    resp_arg.fd = -1;
+    resp_arg.handle = req;
+    resp_arg.method = req->method;
+    strncpy(resp_arg.path_and_query, req->uri, sizeof(req->uri));
+    resp_arg_async = &resp_arg;
     if (handler_index == -1) {
-        www_content_404_clasp(resp_arg);
+        www_content_404_clasp(resp_arg_async);
     } else if (handler_index == -2) {
-        www_content_500_clasp(resp_arg);
+        www_content_500_clasp(resp_arg_async);
     } else {
-        www_response_handlers[handler_index].handler(resp_arg);
+        www_response_handlers[handler_index].handler(resp_arg_async);
     }
     return ESP_OK;
-
 error:
     // allocate a resp arg on the stack, fill it with our info
     // and send a 500
-    resp_arg_data.fd = -1;
-    resp_arg_data.handle = req;
-    resp_arg_data.method = req->method;
-    strncpy(resp_arg_data.path_and_query, req->uri, sizeof(req->uri));
-    resp_arg = &resp_arg_data;
-    www_content_500_clasp(resp_arg);
+    resp_arg.fd = -1;
+    resp_arg.handle = req;
+    resp_arg.method = req->method;
+    strncpy(resp_arg.path_and_query, req->uri, sizeof(req->uri));
+    resp_arg_async = &resp_arg;
+    www_content_500_clasp(resp_arg_async);
     return ESP_OK;
 }
 static bool httpd_match(const char* cmp, const char* uri, size_t len) {
