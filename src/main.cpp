@@ -1,8 +1,15 @@
-//#define NO_STORE_UPLOAD
 // put wifi.txt on SD (M5Stack core2) or alternatively on SPIFFS (any ESP32)
 // first line is SSID, next line is password
+
+// for testing, won't actually store the uploaded file on the FS
+//#define NO_STORE_UPLOAD
+
+// This is the size of our working buffer. While larger is faster, 
+// 8192 seems to yield the most performance. After that it levels off
 #define UPLOAD_BUFFER_SIZE 8192
 #define UPLOAD_WORKING_SIZE 8192
+
+// SD support on the Core2
 #ifdef M5STACK_CORE2
 #define SPI_PORT SPI3_HOST
 #define SPI_CLK 18
@@ -12,21 +19,23 @@
 #define SD_PORT SPI_PORT
 #define SD_CS 4
 #endif
+// Example of adding SD support to the C6 kit:
+// #ifdef C6DEVKITC1
+// #define SPI_PORT SPI2_HOST
+// #define SPI_CLK 6
+// #define SPI_MISO 19
+// #define SPI_MOSI 20
 
-#ifdef C6DEVKITC1
-#define SPI_PORT SPI2_HOST
-#define SPI_CLK 6
-#define SPI_MISO 19
-#define SPI_MOSI 20
+// #define SD_PORT SPI_PORT
+// #define SD_CS 19
+// #endif
 
-#define SD_PORT SPI_PORT
-#define SD_CS 19
-#endif
 #include <ctype.h>
 #include <math.h>
 #include <sys/stat.h>
 #include <sys/unistd.h>
 #include <time.h>
+// CORE2 needs its AXP192 chip initialized
 #ifdef M5STACK_CORE2
 #include <esp_i2c.hpp>        // i2c initialization
 #include <m5core2_power.hpp>  // AXP192 power management (core2)
@@ -49,8 +58,7 @@ struct httpd_context {
     int fd;
 };
 
-// these are globals we use in the page
-
+// here we put globals we use in the page
 char enc_rfc3986[256] = {0};
 char enc_html5[256] = {0};
 
@@ -68,6 +76,7 @@ static stat_t fs_stat(const char* path) {
 using namespace esp_idf;  // devices
 #endif
 
+// not all compiler vendors implement stricmp
 static int my_stricmp(const char* lhs, const char* rhs) {
     int result = 0;
     while (!result && *lhs && *rhs) {
@@ -83,7 +92,6 @@ static int my_stricmp(const char* lhs, const char* rhs) {
     }
     return result;
 }
-
 static constexpr const EventBits_t wifi_connected_bit = BIT0;
 static constexpr const EventBits_t wifi_fail_bit = BIT1;
 static EventGroupHandle_t wifi_event_group = NULL;
@@ -525,9 +533,9 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                                                          strlen(szeq)] = '\0';
                                                 }
                                                 strcat(path, szeq);
+#ifndef NO_STORE_UPLOAD
                                                 remove(path);  // delete if it
                                                                // exists;
-#ifndef NO_STORE_UPLOAD
                                                 fcur = fopen(path, "wb");
 #else
                                                 fcur = nullptr;
