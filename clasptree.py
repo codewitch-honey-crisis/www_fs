@@ -26,6 +26,8 @@ cmdargParser.add_argument("-m","--handlerfsm", required= False, help = "Generate
 cmdargParser.add_argument("-u","--urlmap", help = "Generates handler mappings from a map file. <headersfsm> must be specified",required=False,type=str)
 cmdargParser.add_argument("-I","--indent", required=False,default=0, help = "Indicates the number of spaces to indent each line",type=int)
 cmdargParser.add_argument("-l","--eol",required=False,default="unix",help="Indicates the style of line ending to use, either \"windows\", \"unix\" or \"apple\"",type=str)
+cmdargParser.add_argument("-d","--dfa", required= False, help = "Generate a DFA graph to the specified file. <headersfsm> must be specified",type = str)
+
 cmdargs = cmdargParser.parse_args()
 
 res_c_runner = """int adv = 0;
@@ -464,7 +466,7 @@ def toNonRangeArray(fa):
             i += 1
     return result
 
-def emitFsm(handlers, maps):
+def emitFsm(handlers, maps, file):
     hfas = [None] * (len(handlers) + len(maps))
     i = 0
     while i < len(handlers):
@@ -479,7 +481,10 @@ def emitFsm(handlers, maps):
             hfas[i + len(handlers)] = FA.parse(maps[i][0], i + len(handlers))
         i += 1
     lexer = FA.toLexer(hfas, True)
-    
+    if (not (file is None)) and len(file) > 0:
+        print(f"Emitting DFA to {file}")
+        lexer.renderToFile(file)
+
     fsmData = toRangeArray(lexer)
     rsrc = res_c_runner_ranges
     nrfsmData = toNonRangeArray(lexer)
@@ -526,6 +531,9 @@ def run():
     
     if (not (cmdargs.urlmap is None)) and cmdargs.handlerfsm == False:
         raise Exception("--handlersfsm must be specified with --urlmap")
+    
+    if (not (cmdargs.dfa is None)) and cmdargs.handlerfsm == False:
+        raise Exception("--handlersfsm must be specified with --dfa")
     
     if cmdargs.eol == "windows":
         eol = "\r\n"
@@ -743,7 +751,7 @@ def run():
             oldindent = indent
             indent += "    "
             emit("    ") # hack to correct indent
-            emitFsm(handlersList, mapList)
+            emitFsm(handlersList, mapList,cmdargs.dfa)
             indent = oldindent
             emit(eol) # hack to correct indent
             emit("}"+eol)
