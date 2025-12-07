@@ -790,7 +790,7 @@ static bool sd_init() {
     mount_config.format_if_mount_failed = false;
     mount_config.max_files = 5;
     mount_config.allocation_unit_size = 0;
-#ifdef SD_CS
+#if defined(SD_CS) 
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
     host.slot = SD_PORT;
     // // This initializes the slot without card detect (CD) and write
