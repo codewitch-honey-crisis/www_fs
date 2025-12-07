@@ -261,7 +261,7 @@ void www_content_index_clasp(void* resp_arg) {
         "px 10px 10px 10px;\">\n            <tr><td>Mount Point<td></tr>\n            <tr><t"
         "d><a href=\"./spiffs/\">/spiffs/</a></td></tr>\n        \r\n", 438,  resp_arg);
     
-    #ifdef SD_CS
+    #if defined(SD_CS) || defined(SDMMC_D0)
                 if(sd_card!=nullptr) {
      httpd_send_block("43\r\n\n            <tr><td><a href=\"./sdcard/\">/sdcard/</a></tr>"
         "\n        \r\n", 73,  resp_arg);

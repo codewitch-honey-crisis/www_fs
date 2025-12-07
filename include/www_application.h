@@ -8,7 +8,7 @@
 #include <time.h>
 extern char enc_rfc3986[256];
 extern char enc_html5[256];
-#ifdef SD_CS
+#if defined(SD_CS) || defined(SDMMC_D0)
 extern sdmmc_card_t* sd_card;
 #endif
 static void httpd_send_block(const char* data, size_t len, void* arg);

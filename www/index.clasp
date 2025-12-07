@@ -10,7 +10,7 @@
             <tr><td>Mount Point<td></tr>
             <tr><td><a href="./spiffs/">/spiffs/</a></td></tr>
         <%
-#ifdef SD_CS
+#if defined(SD_CS) || defined(SDMMC_D0)
             if(sd_card!=nullptr) {%>
             <tr><td><a href="./sdcard/">/sdcard/</a></tr>
         <%}

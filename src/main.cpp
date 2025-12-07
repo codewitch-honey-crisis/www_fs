@@ -19,6 +19,13 @@
 #define SD_PORT SPI_PORT
 #define SD_CS 4
 #endif
+// SD support on the Freenove S3 Devkit
+#ifdef FREENOVE_S3_DEVKIT
+#define SDMMC_D0 40
+#define SDMMC_CLK 39
+#define SDMMC_CMD 38
+#endif
+
 // Example of adding SD support to the C6 kit:
 // #ifdef C6DEVKITC1
 // #define SPI_PORT SPI2_HOST
@@ -46,6 +53,8 @@
 #include "esp_http_server.h"
 #include "esp_spiffs.h"
 #include "esp_vfs_fat.h"
+#include "sdmmc_cmd.h"
+#include "driver/sdmmc_host.h"
 #include "esp_wifi.h"
 #include "mpm_parser.h"
 #include "nvs_flash.h"
@@ -771,8 +780,8 @@ static void spi_init() {
     // Initialize the SPI bus on VSPI (SPI3)
     ESP_ERROR_CHECK(spi_bus_initialize(SPI_PORT, &buscfg, SPI_DMA_CH_AUTO));
 }
-
-#ifdef SD_CS
+#endif
+#if defined(SD_CS) || defined(SDMMC_D0)
 sdmmc_card_t* sd_card = nullptr;
 static bool sd_init() {
     static const char mount_point[] = "/sdcard";
@@ -781,7 +790,7 @@ static bool sd_init() {
     mount_config.format_if_mount_failed = false;
     mount_config.max_files = 5;
     mount_config.allocation_unit_size = 0;
-
+#ifdef SD_CS
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
     host.slot = SD_PORT;
     // // This initializes the slot without card detect (CD) and write
@@ -799,9 +808,26 @@ static bool sd_init() {
         return false;
     }
     return true;
+#else
+    sdmmc_host_t host = SDMMC_HOST_DEFAULT();
+    host.flags = SDMMC_HOST_FLAG_1BIT; //use 1-line SD mode
+    host.max_freq_khz = 20*1000;
+    sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
+    slot_config.clk = (gpio_num_t)SDMMC_CLK;
+    slot_config.cmd = (gpio_num_t)SDMMC_CMD;
+    slot_config.d0 = (gpio_num_t)SDMMC_D0;
+    slot_config.width = 1;
+    // assuming the board is built correctly, we don't need this:
+    // slot_config.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
+    esp_err_t ret = esp_vfs_fat_sdmmc_mount(mount_point, &host, &slot_config, &mount_config, &sd_card);
+    if(ret!=ESP_OK) {
+        return 0;
+    }
+    return true;
+#endif
 }
 #endif
-#endif
+
 
 static void spiffs_init() {
     esp_vfs_spiffs_conf_t conf;
@@ -828,10 +854,13 @@ static void loop_task(void* arg) {
         }
     }
 }
-
+static uint32_t start_sram;
 extern "C" void app_main() {
     printf("ESP-IDF version: %d.%d.%d\n", ESP_IDF_VERSION_MAJOR,
            ESP_IDF_VERSION_MINOR, ESP_IDF_VERSION_PATCH);
+    start_sram = esp_get_free_internal_heap_size();
+    printf("Free SRAM: %0.2fKB\n",
+                   start_sram / 1024.f);
 #ifdef M5STACK_CORE2
     power_init();  // do this first
 #endif
@@ -843,13 +872,12 @@ extern "C" void app_main() {
     wifi_ssid[0] = 0;
 
     wifi_pass[0] = 0;
-#ifdef SPI_PORT
-#ifdef SD_CS
+
+#if defined(SD_CS) || defined(SDMMC_D0)
     if (sd_init()) {
         puts("SD card found, looking for wifi.txt creds");
         loaded = wifi_load("/sdcard/wifi.txt", wifi_ssid, wifi_pass);
     }
-#endif
 #endif
     if (!loaded) {
         spiffs_init();
@@ -879,8 +907,13 @@ static void loop() {
             snprintf(qr_text, sizeof(qr_text), "http://" IPSTR,
                      IP2STR(&wifi_ip));
             puts(qr_text);
+            uint32_t free_sram = esp_get_free_internal_heap_size() ;
             printf("Free SRAM: %0.2fKB\n",
-                   esp_get_free_internal_heap_size() / 1024.f);
+                   free_sram / 1024.f);
+            printf("SRAM used for webserver firmware: %0.2fKB\n",
+                   (start_sram-free_sram) / 1024.f);
+            
+            
         }
     } else {
         if (wifi_status() == WIFI_CONNECT_FAILED) {
