@@ -1,7 +1,7 @@
 <%@status code="200" text="OK"%>
 <%@header name="Content-Type" value="text/html"%><!DOCTYPE html>
 <html><%
-    httpd_context& ctx = *(httpd_context*)resp_arg;
+    httpd_context_t& ctx = *(httpd_context_t*)resp_arg;
     const char* qpart = strchr(ctx.path_and_query,'?');
     size_t plen;
     if(qpart!=nullptr) {

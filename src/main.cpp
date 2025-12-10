@@ -60,12 +60,12 @@
 #include "nvs_flash.h"
 
 // used by the page handlers
-struct httpd_context {
+typedef struct {
     char path_and_query[513];
     int method;
     void* handle;
     int fd;
-};
+} httpd_context_t;
 
 // here we put globals we use in the page
 char enc_rfc3986[256] = {0};
@@ -313,7 +313,7 @@ static void httpd_parse_url(const char* url) {
 }
 static void httpd_send_chunked(const char* buffer, size_t buffer_len,
                                void* arg) {
-    httpd_context* resp_arg = (httpd_context*)arg;
+    httpd_context_t* resp_arg = (httpd_context_t*)arg;
     char buf[64];
     int fd = resp_arg->fd;
     if (buffer && buffer_len) {
@@ -345,7 +345,7 @@ static void httpd_send_block(const char* data, size_t len, void* arg) {
     if (!data || !len) {
         return;
     }
-    httpd_context* resp_arg = (httpd_context*)arg;
+    httpd_context_t* resp_arg = (httpd_context_t*)arg;
     int fd = resp_arg->fd;
     if (fd > -1) {
         httpd_handle_t hd = (httpd_handle_t)resp_arg->handle;
@@ -406,6 +406,7 @@ typedef struct {
     size_t buffer_size;
     size_t buffer_pos;
 } httpd_recv_buffer_t;
+
 static int httpd_buffered_read(void* state) {
     if (state == nullptr) {
         return -1;
@@ -460,9 +461,9 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
     // match the handler
     int handler_index = www_response_handler_match(req->uri);
     // we keep our response context on the stack if we can
-    httpd_context resp_arg;
+    httpd_context_t resp_arg;
     // but for async responses it must be on the heap
-    httpd_context* resp_arg_async;
+    httpd_context_t* resp_arg_async;
     if (req->method == HTTP_GET || req->method == HTTP_POST) {  // async is only for GET and POST
         if (handler_index == 4) { // this is our FS handler
             bool is_upload = req->method != HTTP_GET;
@@ -506,6 +507,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                         mpm_init(be, 0, httpd_buffered_read, recb, &ctx);
                         size_t size = UPLOAD_WORKING_SIZE;
                         mpm_node_t node;
+                        
                         bool disposition = false;
                         // parse the MIME data
                         while ((node = mpm_parse(&ctx, recb->working, &size)) >
@@ -657,7 +659,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                 }
             }
         }
-        resp_arg_async = (httpd_context*)malloc(sizeof(httpd_context));
+        resp_arg_async = (httpd_context_t*)malloc(sizeof(httpd_context_t));
         if (resp_arg_async == nullptr) {  // no memory
             // we can still do it synchronously
             goto synchronous;
