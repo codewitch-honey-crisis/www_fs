@@ -76,7 +76,6 @@ char enc_html5[256] = {0};
 
 static stat_t fs_stat(const char* path) {
     stat_t s;
-
     stat(path, &s);
     return s;
 }
@@ -251,95 +250,51 @@ static char* httpd_url_decode(char* dst, size_t dstlen, const char* src) {
     return dst;
 }
 
-static const char* httpd_crack_query(const char* next_query_part,
-                                     char* out_name, size_t name_size,
-                                     char* out_value, size_t value_size) {
-    if (!*next_query_part) return NULL;
+// static const char* httpd_crack_query(const char* next_query_part,
+//                                      char* out_name, size_t name_size,
+//                                      char* out_value, size_t value_size) {
+//     if (!*next_query_part) return NULL;
 
-    const char start = *next_query_part;
-    if (start == '&' || start == '?') {
-        ++next_query_part;
-    }
-    size_t i = 0;
-    char* name_cur = out_name;
-    while (*next_query_part && *next_query_part != '=' &&
-           *next_query_part != '&' && *next_query_part != ';') {
-        if (i < name_size) {
-            *name_cur++ = *next_query_part;
-        }
-        ++next_query_part;
-        ++i;
-    }
-    if (name_size) {
-        *name_cur = '\0';
-    }
-    if (!*next_query_part || *next_query_part == '&' ||
-        *next_query_part == ';') {
-        if (value_size) {
-            *out_value = '\0';
-        }
-        return next_query_part;
-    }
-    ++next_query_part;
-    i = 0;
-    char* value_cur = out_value;
-    while (*next_query_part && *next_query_part != '&' &&
-           *next_query_part != ';') {
-        if (i < value_size) {
-            *value_cur++ = *next_query_part;
-        }
-        ++next_query_part;
-        ++i;
-    }
-    if (value_size) {
-        *value_cur = '\0';
-    }
-    return next_query_part;
-}
-static void httpd_parse_url(const char* url) {
-    const char* query = strchr(url, '?');
-    char name[64];
-    char value[64];
-    if (query != nullptr) {
-        while (1) {
-            query = httpd_crack_query(query, name, sizeof(name), value,
-                                      sizeof(value));
-            if (!query) {
-                break;
-            }
-            // do work
-        }
-    }
-}
-static void httpd_send_chunked(const char* buffer, size_t buffer_len,
-                               void* arg) {
-    httpd_context_t* resp_arg = (httpd_context_t*)arg;
-    char buf[64];
-    int fd = resp_arg->fd;
-    if (buffer && buffer_len) {
-        itoa(buffer_len, buf, 16);
-        strcat(buf, "\r\n");
-        if (fd > -1) {
-            httpd_handle_t hd = (httpd_handle_t)resp_arg->handle;
-            httpd_socket_send(hd, fd, buf, strlen(buf), 0);
-            httpd_socket_send(hd, fd, buffer, buffer_len, 0);
-            httpd_socket_send(hd, fd, "\r\n", 2, 0);
-        } else {
-            httpd_req_t* r = (httpd_req_t*)resp_arg->handle;
-            httpd_send(r, buf, strlen(buf));
-            httpd_send(r, buffer, buffer_len);
-            httpd_send(r, "\r\n", 2);
-        }
-        return;
-    }
-    if (fd > -1) {
-        httpd_handle_t hd = (httpd_handle_t)resp_arg->handle;
-        httpd_socket_send(hd, fd, "0\r\n\r\n", 5, 0);
-    } else {
-        httpd_req_t* r = (httpd_req_t*)resp_arg->handle;
-        httpd_send(r, "0\r\n\r\n", 5);
-    }
-}
+//     const char start = *next_query_part;
+//     if (start == '&' || start == '?') {
+//         ++next_query_part;
+//     }
+//     size_t i = 0;
+//     char* name_cur = out_name;
+//     while (*next_query_part && *next_query_part != '=' &&
+//            *next_query_part != '&' && *next_query_part != ';') {
+//         if (i < name_size) {
+//             *name_cur++ = *next_query_part;
+//         }
+//         ++next_query_part;
+//         ++i;
+//     }
+//     if (name_size) {
+//         *name_cur = '\0';
+//     }
+//     if (!*next_query_part || *next_query_part == '&' ||
+//         *next_query_part == ';') {
+//         if (value_size) {
+//             *out_value = '\0';
+//         }
+//         return next_query_part;
+//     }
+//     ++next_query_part;
+//     i = 0;
+//     char* value_cur = out_value;
+//     while (*next_query_part && *next_query_part != '&' &&
+//            *next_query_part != ';') {
+//         if (i < value_size) {
+//             *value_cur++ = *next_query_part;
+//         }
+//         ++next_query_part;
+//         ++i;
+//     }
+//     if (value_size) {
+//         *value_cur = '\0';
+//     }
+//     return next_query_part;
+// }
 
 static void httpd_send_block(const char* data, size_t len, void* arg) {
     if (!data || !len) {
@@ -355,11 +310,25 @@ static void httpd_send_block(const char* data, size_t len, void* arg) {
         httpd_send(r, data, len);
     }
 }
-static void httpd_send_expr(int expr, void* arg) {
+static void httpd_send_chunked(const char* buffer, size_t buffer_len,
+                               void* arg) {
     char buf[64];
-    itoa(expr, buf, 10);
-    httpd_send_chunked(buf, strlen(buf), arg);
+    if (buffer && buffer_len) {
+        itoa(buffer_len, buf, 16);
+        strcat(buf, "\r\n");
+        httpd_send_block(buf,strlen(buf),arg);
+        httpd_send_block(buffer,buffer_len,arg);
+        httpd_send_block("\r\n",2,arg);
+        return;
+    }
+    httpd_send_block("0\r\n\r\n", 5, arg);
 }
+
+// static void httpd_send_expr(int expr, void* arg) {
+//     char buf[64];
+//     itoa(expr, buf, 10);
+//     httpd_send_chunked(buf, strlen(buf), arg);
+// }
 static void httpd_send_expr(float expr, void* arg) {
     if (isnan(expr)) {
         return;
@@ -379,11 +348,11 @@ static void httpd_send_expr(float expr, void* arg) {
     }
     httpd_send_chunked(buf, strlen(buf), arg);
 }
-static void httpd_send_expr(unsigned char expr, void* arg) {
-    char buf[64];
-    sprintf(buf, "%02d", (int)expr);
-    httpd_send_chunked(buf, strlen(buf), arg);
-}
+// static void httpd_send_expr(unsigned char expr, void* arg) {
+//     char buf[64];
+//     sprintf(buf, "%02d", (int)expr);
+//     httpd_send_chunked(buf, strlen(buf), arg);
+// }
 static void httpd_send_expr(time_t time, void* arg) {
     httpd_send_expr(ctime(&time), arg);
 }
@@ -467,11 +436,6 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
     if (req->method == HTTP_GET || req->method == HTTP_POST) {  // async is only for GET and POST
         if (handler_index == 4) { // this is our FS handler
             bool is_upload = req->method != HTTP_GET;
-            bool is_sdcard = 0 == strncmp(req->uri, "/sdcard/", 8);
-            bool is_spiffs = false;
-            if (!is_sdcard) {
-                is_spiffs = 0 == strncmp(req->uri, "/spiffs/", 8);
-            }
             // get the filepath from the path and query string
             char path[513];
             const char* sze = strchr(req->uri, '?');
@@ -572,6 +536,8 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                                         fcur = NULL;
                                     }
                                     path[path_len] = '\0';
+                                    break;
+                                default:
                                     break;
                             }
                             size = UPLOAD_WORKING_SIZE;

@@ -21,14 +21,14 @@ static void httpd_send_block(const char* data, size_t len, void* arg);
 /// @param len The length of the data
 /// @param arg The application defined context
 static void httpd_send_chunked(const char* data, size_t len, void* arg);
-/// @brief Sends an expression to a connected socket
-/// @param expr The expression
-/// @param arg The application defined context
-static void httpd_send_expr(int expr, void* arg);
-/// @brief Sends an expression to a connected socket
-/// @param expr The expression
-/// @param arg The application defined context
-static void httpd_send_expr(unsigned char expr, void* arg);
+// /// @brief Sends an expression to a connected socket
+// /// @param expr The expression
+// /// @param arg The application defined context
+// static void httpd_send_expr(int expr, void* arg);
+// /// @brief Sends an expression to a connected socket
+// /// @param expr The expression
+// /// @param arg The application defined context
+// static void httpd_send_expr(unsigned char expr, void* arg);
 /// @brief Sends an expression to a connected socket
 /// @param expr The expression
 /// @param arg The application defined context
