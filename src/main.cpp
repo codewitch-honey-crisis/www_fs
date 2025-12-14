@@ -68,6 +68,7 @@ typedef struct {
 } httpd_context_t;
 
 // here we put globals we use in the page
+// url encoding tables
 char enc_rfc3986[256] = {0};
 char enc_html5[256] = {0};
 
@@ -100,6 +101,8 @@ static int my_stricmp(const char* lhs, const char* rhs) {
     }
     return result;
 }
+
+enum WIFI_STATUS { WIFI_WAITING, WIFI_CONNECTED, WIFI_CONNECT_FAILED };
 static constexpr const EventBits_t wifi_connected_bit = BIT0;
 static constexpr const EventBits_t wifi_fail_bit = BIT1;
 static EventGroupHandle_t wifi_event_group = NULL;
@@ -107,6 +110,7 @@ static char wifi_ssid[65];
 static char wifi_pass[129];
 static esp_ip4_addr_t wifi_ip;
 static size_t wifi_retry_count = 0;
+
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                int32_t event_id, void* event_data) {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
@@ -128,6 +132,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
         xEventGroupSetBits(wifi_event_group, wifi_connected_bit);
     }
 }
+
 static bool wifi_load(const char* path, char* ssid, char* pass) {
     FILE* file = fopen(path, "r");
     if (file != nullptr) {
@@ -147,6 +152,7 @@ static bool wifi_load(const char* path, char* ssid, char* pass) {
     }
     return false;
 }
+
 static void wifi_init(const char* ssid, const char* password) {
     nvs_flash_init();
     wifi_event_group = xEventGroupCreate();
@@ -179,7 +185,7 @@ static void wifi_init(const char* ssid, const char* password) {
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
 }
-enum WIFI_STATUS { WIFI_WAITING, WIFI_CONNECTED, WIFI_CONNECT_FAILED };
+
 static WIFI_STATUS wifi_status() {
     if (wifi_event_group == nullptr) {
         return WIFI_WAITING;
@@ -217,6 +223,7 @@ static char* httpd_url_encode(char* enc, size_t size, const char* s,
     }
     return result;
 }
+
 static char* httpd_url_decode(char* dst, size_t dstlen, const char* src) {
     char a, b;
     while (*src && dstlen) {
@@ -310,6 +317,7 @@ static void httpd_send_block(const char* data, size_t len, void* arg) {
         httpd_send(r, data, len);
     }
 }
+
 static void httpd_send_chunked(const char* buffer, size_t buffer_len,
                                void* arg) {
     char buf[64];
@@ -324,11 +332,6 @@ static void httpd_send_chunked(const char* buffer, size_t buffer_len,
     httpd_send_block("0\r\n\r\n", 5, arg);
 }
 
-// static void httpd_send_expr(int expr, void* arg) {
-//     char buf[64];
-//     itoa(expr, buf, 10);
-//     httpd_send_chunked(buf, strlen(buf), arg);
-// }
 static void httpd_send_expr(float expr, void* arg) {
     if (isnan(expr)) {
         return;
@@ -348,11 +351,7 @@ static void httpd_send_expr(float expr, void* arg) {
     }
     httpd_send_chunked(buf, strlen(buf), arg);
 }
-// static void httpd_send_expr(unsigned char expr, void* arg) {
-//     char buf[64];
-//     sprintf(buf, "%02d", (int)expr);
-//     httpd_send_chunked(buf, strlen(buf), arg);
-// }
+
 static void httpd_send_expr(time_t time, void* arg) {
     httpd_send_expr(ctime(&time), arg);
 }
@@ -364,6 +363,20 @@ static void httpd_send_expr(const char* expr, void* arg) {
     httpd_send_chunked(expr, strlen(expr), arg);
 }
 
+// static void httpd_send_expr(int expr, void* arg) {
+//     char buf[64];
+//     itoa(expr, buf, 10);
+//     httpd_send_chunked(buf, strlen(buf), arg);
+// }
+
+// static void httpd_send_expr(unsigned char expr, void* arg) {
+//     char buf[64];
+//     sprintf(buf, "%02d", (int)expr);
+//     httpd_send_chunked(buf, strlen(buf), arg);
+// }
+
+
+// for reading HTTP request content bodies.
 typedef struct {
     httpd_req_t* req;
     size_t remaining;
@@ -388,8 +401,7 @@ static int httpd_buffered_read(void* state) {
         if (!rfb->remaining) {
             goto done;
         }
-        
-        
+        // reset the WDT
         vTaskDelay(5);
         int r = httpd_req_recv(rfb->req, rfb->buffer,
                                rfb->remaining <= sizeof(rfb->buffer)
@@ -537,7 +549,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                                     }
                                     path[path_len] = '\0';
                                     break;
-                                default:
+                                default: // don't care
                                     break;
                             }
                             size = UPLOAD_WORKING_SIZE;
@@ -871,10 +883,10 @@ static void loop() {
             puts("Starting httpd");
             httpd_init();
             // set the url text to our website
-            static char qr_text[256];
-            snprintf(qr_text, sizeof(qr_text), "http://" IPSTR,
+            static char url_text[256];
+            snprintf(url_text, sizeof(url_text), "http://" IPSTR,
                      IP2STR(&wifi_ip));
-            puts(qr_text);
+            puts(url_text);
             uint32_t free_sram = esp_get_free_internal_heap_size() ;
             printf("Free SRAM: %0.2fKB\n",
                    free_sram / 1024.f);
