@@ -26,6 +26,12 @@
 #define SDMMC_CMD 38
 #endif
 
+#ifdef NEOPIXEL
+#ifdef C6DEVKITC1
+#define NEOPIXEL_DOUT 8
+#endif
+#endif
+
 // Example of adding SD support to the C6 kit:
 // #ifdef C6DEVKITC1
 // #define SPI_PORT SPI2_HOST
@@ -58,7 +64,10 @@
 #include "esp_wifi.h"
 #include "mpm_parser.h"
 #include "nvs_flash.h"
-
+#ifdef NEOPIXEL_DOUT
+#include "led_strip.h"
+#include "led_strip_rmt.h"
+#endif
 // not all compiler vendors implement stricmp
 static int my_stricmp(const char* lhs, const char* rhs) {
     int result = 0;
@@ -513,9 +522,12 @@ done:
     return -1;
 }
 static esp_err_t httpd_request_handler(httpd_req_t* req) {
+#ifdef NEOPIXEL_DOUT
+    led_strip_set_pixel(neopixel_handle,0,0,0,255);
+    led_strip_refresh(neopixel_handle);
+#endif
     // match the handler
     int handler_index = www_response_handler_match(req->uri);
-    // printf("url: %s, index: %d\n",req->uri,handler_index);
     // we keep our response context on the stack if we can
     httpd_context_t resp_arg;
     // but for async responses it must be on the heap
@@ -531,6 +543,11 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
             httpd_url_decode(path, path_len, req->uri);
             path[path_len] = '\0';
             if (is_upload) {
+#ifdef NEOPIXEL_DOUT
+                led_strip_set_pixel(neopixel_handle,0,255,0,0);
+                led_strip_refresh(neopixel_handle);
+#endif
+
                 char ctype[256];
                 FILE* fcur = NULL;
                 httpd_req_get_hdr_value_str(req, "Content-Type", ctype,
@@ -657,6 +674,10 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                             *sze = '\0';
                         }
                         strcat(path, sz);
+#ifdef NEOPIXEL_DOUT
+                        led_strip_set_pixel(neopixel_handle,0,255,0,0);
+                        led_strip_refresh(neopixel_handle);
+#endif
                         fputs("Deleting ",stdout);
                         puts(path);
                         remove(path);
@@ -722,6 +743,10 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                     l = fread(buf, 1, sizeof(buf), file);
                 }
                 fclose(file);
+#ifdef NEOPIXEL_DOUT
+                led_strip_clear(neopixel_handle);
+                led_strip_refresh(neopixel_handle);
+#endif
                 return ESP_OK;
             } else {
                 DIR* d = opendir(path);
@@ -904,6 +929,21 @@ static bool sd_init() {
 }
 #endif
 
+#ifdef NEOPIXEL_DOUT
+led_strip_handle_t neopixel_handle = NULL;
+static void neopixel_init() {
+    led_strip_config_t led_cfg;
+    memset(&led_cfg,0,sizeof(led_cfg));
+    led_cfg.color_component_format = LED_STRIP_COLOR_COMPONENT_FMT_RGB;
+    led_cfg.led_model = LED_MODEL_SK6812;
+    led_cfg.max_leds = 1;
+    led_cfg.strip_gpio_num = (gpio_num_t)NEOPIXEL_DOUT;
+    led_strip_rmt_config_t led_rmt_cfg;
+    memset(&led_rmt_cfg,0,sizeof(led_rmt_cfg));
+    ESP_ERROR_CHECK(led_strip_new_rmt_device(&led_cfg,&led_rmt_cfg,&neopixel_handle));
+}
+
+#endif
 
 static void spiffs_init() {
     esp_vfs_spiffs_conf_t conf;
@@ -939,6 +979,11 @@ extern "C" void app_main() {
                    start_sram / 1024.f);
 #ifdef M5STACK_CORE2
     power_init();  // do this first
+#endif
+#ifdef NEOPIXEL_DOUT
+        neopixel_init();
+        ESP_ERROR_CHECK(led_strip_clear(neopixel_handle));
+        ESP_ERROR_CHECK(led_strip_refresh(neopixel_handle));
 #endif
 #ifdef SPI_PORT
     spi_init();  // used by the SD reader

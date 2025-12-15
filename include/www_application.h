@@ -6,8 +6,14 @@
 #include <ctype.h>
 #include <dirent.h>
 #include <time.h>
+#ifdef NEOPIXEL
+#include "led_strip.h"
+#endif
 extern char enc_rfc3986[256];
 extern char enc_html5[256];
+#ifdef NEOPIXEL
+extern led_strip_handle_t neopixel_handle;
+#endif
 #if defined(SD_CS) || defined(SDMMC_D0)
 extern sdmmc_card_t* sd_card;
 #endif
