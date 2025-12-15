@@ -672,8 +672,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                 bool downloading = false;
                 if(pq!=NULL) {
                     while (NULL!=(pq=httpd_crack_query(pq,cname,sizeof(cname),cval,sizeof(cval)))) {
-                        if(cname[0]!='\0' && 0==my_stricmp(cname,"download")) {
-                            puts("Downloading");
+                        if(0==my_stricmp(cname,"download")) {
                             downloading = true;
                             break;
                         }
