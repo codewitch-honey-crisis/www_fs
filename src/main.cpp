@@ -425,7 +425,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                 }
                 static const char* header2 = "\r\nContent-Length: ";
                 httpd_send(req, header2, strlen(header2));    
-                char* buf = (char*)malloc(1024);
+                char* buf = (char*)malloc(8192);
                 if(buf==NULL) {
                     return ESP_FAIL;
                 }
@@ -439,10 +439,10 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                     free(buf);
                     return ESP_FAIL;
                 }
-                l = fread(buf, 1, sizeof(buf), file);
+                l = fread(buf, 1, sizeof(8192), file);
                 while (l > 0) {
                     httpd_send(req, buf, l);
-                    l = fread(buf, 1, sizeof(buf), file);
+                    l = fread(buf, 1, sizeof(8192), file);
                 }
                 free(buf);
                 fclose(file);
