@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define WWW_RESPONSE_HANDLER_COUNT 5
+#define WWW_RESPONSE_HANDLER_COUNT 6
 typedef struct { const char* path; const char* path_encoded; void (* handler) (void* arg); } www_response_handler_t;
 extern www_response_handler_t www_response_handlers[WWW_RESPONSE_HANDLER_COUNT];
 #ifdef __cplusplus
@@ -25,6 +25,8 @@ void www_content_index_clasp(void* resp_arg);
 void www_content_images_404_jpg(void* resp_arg);
 // .images/500.jpg
 void www_content_images_500_jpg(void* resp_arg);
+// .images/download.png
+void www_content_images_download_png(void* resp_arg);
 /// @brief Matches a path to one of the response handler entries
 /// @param path_and_query The path to match which can include the query string (ignored)
 /// @return The index of the response handler entry, or -1 if no match
@@ -40,10 +42,11 @@ int www_response_handler_match(const char* path_and_query);
 
 #include "www_application.h"
 
-www_response_handler_t www_response_handlers[5] = {
+www_response_handler_t www_response_handlers[6] = {
     { "/", "/", www_content_index_clasp },
     { "/images/404.jpg", "/images/404.jpg", www_content_images_404_jpg },
     { "/images/500.jpg", "/images/500.jpg", www_content_images_500_jpg },
+    { "/images/download.png", "/images/download.png", www_content_images_download_png },
     { "/index.clasp", "/index.clasp", www_content_index_clasp },
     { "", "", www_content_fs_clasp }
 };
@@ -51,23 +54,26 @@ www_response_handler_t www_response_handlers[5] = {
 // matches a path to a response handler index
 int www_response_handler_match(const char* path_and_query) {
     static const int16_t fsm_data[] = {
-        -1, 1, 6, 1, 47, 47, 0, 2, 16, 1, 105, 105, 198, 1, 115, 115, -1, 2, 26, 1, 
-        109, 109, 142, 1, 110, 110, -1, 1, 32, 1, 97, 97, -1, 1, 38, 1, 103, 103, -1, 1, 
-        44, 1, 101, 101, -1, 1, 50, 1, 115, 115, -1, 1, 56, 1, 47, 47, -1, 2, 66, 1, 
-        52, 52, 104, 1, 53, 53, -1, 1, 72, 1, 48, 48, -1, 1, 78, 1, 52, 52, -1, 1, 
-        84, 1, 46, 46, -1, 1, 90, 1, 106, 106, -1, 1, 96, 1, 112, 112, -1, 1, 102, 1, 
-        103, 103, 1, 0, -1, 1, 110, 1, 48, 48, -1, 1, 116, 1, 48, 48, -1, 1, 122, 1, 
-        46, 46, -1, 1, 128, 1, 106, 106, -1, 1, 134, 1, 112, 112, -1, 1, 140, 1, 103, 103, 
-        2, 0, -1, 1, 148, 1, 100, 100, -1, 1, 154, 1, 101, 101, -1, 1, 160, 1, 120, 120, 
-        -1, 1, 166, 1, 46, 46, -1, 1, 172, 1, 99, 99, -1, 1, 178, 1, 108, 108, -1, 1, 
-        184, 1, 97, 97, -1, 1, 190, 1, 115, 115, -1, 1, 196, 1, 112, 112, 3, 0, -1, 2, 
-        208, 1, 100, 100, 302, 1, 112, 112, -1, 1, 214, 1, 99, 99, -1, 1, 220, 1, 97, 97, 
-        -1, 1, 226, 1, 114, 114, -1, 1, 232, 1, 100, 100, -1, 1, 238, 1, 47, 47, 4, 1, 
-        238, 30, 0, 45, 46, 46, 47, 47, 48, 48, 49, 51, 52, 52, 53, 53, 54, 96, 97, 97, 
-        98, 98, 99, 99, 100, 100, 101, 101, 102, 102, 103, 103, 104, 104, 105, 105, 106, 106, 107, 107, 
-        108, 108, 109, 109, 110, 110, 111, 111, 112, 112, 113, 113, 114, 114, 115, 115, 116, 119, 120, 120, 
-        121, 127, -1, 1, 308, 1, 105, 105, -1, 1, 314, 1, 102, 102, -1, 1, 320, 1, 102, 102, 
-        -1, 1, 232, 1, 115, 115 };
+        -1, 1, 6, 1, 47, 47, 0, 2, 16, 1, 105, 105, 270, 1, 115, 115, -1, 2, 26, 1, 
+        109, 109, 214, 1, 110, 110, -1, 1, 32, 1, 97, 97, -1, 1, 38, 1, 103, 103, -1, 1, 
+        44, 1, 101, 101, -1, 1, 50, 1, 115, 115, -1, 1, 56, 1, 47, 47, -1, 3, 70, 1, 
+        52, 52, 108, 1, 53, 53, 146, 1, 100, 100, -1, 1, 76, 1, 48, 48, -1, 1, 82, 1, 
+        52, 52, -1, 1, 88, 1, 46, 46, -1, 1, 94, 1, 106, 106, -1, 1, 100, 1, 112, 112, 
+        -1, 1, 106, 1, 103, 103, 1, 0, -1, 1, 114, 1, 48, 48, -1, 1, 120, 1, 48, 48, 
+        -1, 1, 126, 1, 46, 46, -1, 1, 132, 1, 106, 106, -1, 1, 138, 1, 112, 112, -1, 1, 
+        144, 1, 103, 103, 2, 0, -1, 1, 152, 1, 111, 111, -1, 1, 158, 1, 119, 119, -1, 1, 
+        164, 1, 110, 110, -1, 1, 170, 1, 108, 108, -1, 1, 176, 1, 111, 111, -1, 1, 182, 1, 
+        97, 97, -1, 1, 188, 1, 100, 100, -1, 1, 194, 1, 46, 46, -1, 1, 200, 1, 112, 112, 
+        -1, 1, 206, 1, 110, 110, -1, 1, 212, 1, 103, 103, 3, 0, -1, 1, 220, 1, 100, 100, 
+        -1, 1, 226, 1, 101, 101, -1, 1, 232, 1, 120, 120, -1, 1, 238, 1, 46, 46, -1, 1, 
+        244, 1, 99, 99, -1, 1, 250, 1, 108, 108, -1, 1, 256, 1, 97, 97, -1, 1, 262, 1, 
+        115, 115, -1, 1, 268, 1, 112, 112, 4, 0, -1, 2, 280, 1, 100, 100, 376, 1, 112, 112, 
+        -1, 1, 286, 1, 99, 99, -1, 1, 292, 1, 97, 97, -1, 1, 298, 1, 114, 114, -1, 1, 
+        304, 1, 100, 100, -1, 1, 310, 1, 47, 47, 5, 1, 310, 31, 0, 45, 46, 46, 47, 47, 
+        48, 48, 49, 51, 52, 52, 53, 53, 54, 96, 97, 97, 98, 98, 99, 99, 100, 100, 101, 101, 
+        102, 102, 103, 103, 104, 104, 105, 105, 106, 106, 107, 107, 108, 108, 109, 109, 110, 110, 111, 111, 
+        112, 112, 113, 113, 114, 114, 115, 115, 116, 118, 119, 119, 120, 120, 121, 127, -1, 1, 382, 1, 
+        105, 105, -1, 1, 388, 1, 102, 102, -1, 1, 394, 1, 102, 102, -1, 1, 304, 1, 115, 115 };
     
     int adv = 0;
     int tlen;
@@ -235,9 +241,12 @@ void www_content_fs_clasp(void* resp_arg) {
     }
      httpd_send_block("12\r\n</td><td><a href=\"\r\n", 24,  resp_arg);
      httpd_send_expr(tmp2,  resp_arg);
+     httpd_send_block("3e\r\n?download\"><img src=\"/images/download.png\" /></a><td><a hr"
+        "ef=\"\r\n", 68,  resp_arg);
+     httpd_send_expr(tmp2,  resp_arg);
      httpd_send_block("2\r\n\">\r\n", 7,  resp_arg);
      httpd_send_expr(de->d_name,  resp_arg);
-     httpd_send_block("c\r\n</a><td><td>\r\n", 17,  resp_arg);
+     httpd_send_block("8\r\n</a><td>\r\n", 13,  resp_arg);
      httpd_send_expr(is_dir?NAN:(((float)st.st_size)/1024.f),  resp_arg);
      httpd_send_expr(is_dir?"":"KB",  resp_arg);
      httpd_send_block("9\r\n</td><td>\r\n", 14,  resp_arg);
@@ -10556,6 +10565,31 @@ void www_content_images_500_jpg(void* resp_arg) {
         0x86, 0x5b, 0x49, 0x18, 0xf3, 0x1d, 0xca, 0xb4, 0x3e, 0xe9, 0xf3, 0xb1, 0x62, 0xbd, 0xe0, 0x1e, 0xa1, 0x00, 0xbb, 0x52, 
         0x93, 0x72, 0x77, 0xb9, 0xe7, 0x5e, 0x0e, 0x6c, 0x33, 0xf9, 0x4c, 0x18, 0x9d, 0x63, 0xee, 0xa4, 0xd4, 0x33, 0xb1, 0x71, 
         0xbf, 0xfa, 0xf2, 0x2e, 0x5d, 0xa7, 0xc7, 0xd4, 0x89, 0xff, 0x03 };
+     httpd_send_block((const char*)http_response_data,sizeof(http_response_data),  resp_arg);
+       if(((httpd_context_t*)resp_arg)->fd>-1) free(resp_arg);
+    
+
+}
+void www_content_images_download_png(void* resp_arg) {
+    // HTTP/1.1 200  OK
+    // Content-Type: image/png
+    // Content-Encoding: deflate
+    // Content-Length: 150
+    // 
+    static const unsigned char http_response_data[] = {
+        0x48, 0x54, 0x54, 0x50, 0x2f, 0x31, 0x2e, 0x31, 0x20, 0x32, 0x30, 0x30, 0x20, 0x20, 0x4f, 0x4b, 0x0d, 0x0a, 0x43, 0x6f, 
+        0x6e, 0x74, 0x65, 0x6e, 0x74, 0x2d, 0x54, 0x79, 0x70, 0x65, 0x3a, 0x20, 0x69, 0x6d, 0x61, 0x67, 0x65, 0x2f, 0x70, 0x6e, 
+        0x67, 0x0d, 0x0a, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x2d, 0x45, 0x6e, 0x63, 0x6f, 0x64, 0x69, 0x6e, 0x67, 0x3a, 
+        0x20, 0x64, 0x65, 0x66, 0x6c, 0x61, 0x74, 0x65, 0x0d, 0x0a, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x2d, 0x4c, 0x65, 
+        0x6e, 0x67, 0x74, 0x68, 0x3a, 0x20, 0x31, 0x35, 0x30, 0x0d, 0x0a, 0x0d, 0x0a, 0xeb, 0x0c, 0xf0, 0x73, 0xe7, 0xe5, 0x92, 
+        0xe2, 0x62, 0x60, 0x60, 0xe0, 0xf5, 0xf4, 0x70, 0x09, 0x02, 0xd2, 0x12, 0x20, 0xcc, 0xc1, 0x06, 0x24, 0x1f, 0x94, 0xdb, 
+        0xfe, 0x00, 0x52, 0x9c, 0x05, 0x1e, 0x91, 0xc5, 0x0c, 0x0c, 0xdc, 0xc2, 0x20, 0xcc, 0xc8, 0x30, 0x6b, 0x0e, 0x48, 0x85, 
+        0x9f, 0xa7, 0x8b, 0x63, 0x48, 0xc5, 0x9c, 0xe4, 0x04, 0x09, 0xcf, 0x07, 0x1a, 0xcc, 0xcc, 0x87, 0xeb, 0x35, 0xec, 0x7c, 
+        0xb8, 0xb9, 0xff, 0x2d, 0x7e, 0x18, 0xc8, 0x6d, 0x70, 0xe0, 0x7f, 0x20, 0x77, 0xdb, 0x7c, 0xd6, 0xa7, 0x11, 0x3c, 0x47, 
+        0x5b, 0x5f, 0x67, 0x66, 0x7a, 0xda, 0xea, 0xd6, 0x06, 0xf9, 0xaf, 0x7c, 0xf8, 0x43, 0x67, 0xe1, 0xac, 0x87, 0x37, 0x74, 
+        0x16, 0xee, 0x7a, 0x68, 0x70, 0x81, 0xe1, 0xe8, 0xe2, 0x06, 0xb3, 0x07, 0xf6, 0x53, 0x0d, 0xff, 0xea, 0x26, 0x48, 0x4c, 
+        0x62, 0x60, 0xd0, 0x77, 0xcc, 0x7b, 0xbf, 0x49, 0x61, 0xf6, 0x7b, 0xa0, 0xc9, 0x0c, 0x9e, 0xae, 0x7e, 0x2e, 0xeb, 0x9c, 
+        0x12, 0x9a, 0x00 };
      httpd_send_block((const char*)http_response_data,sizeof(http_response_data),  resp_arg);
        if(((httpd_context_t*)resp_arg)->fd>-1) free(resp_arg);
     

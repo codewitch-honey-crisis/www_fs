@@ -59,6 +59,23 @@
 #include "mpm_parser.h"
 #include "nvs_flash.h"
 
+// not all compiler vendors implement stricmp
+static int my_stricmp(const char* lhs, const char* rhs) {
+    int result = 0;
+    while (!result && *lhs && *rhs) {
+        result = tolower(*lhs++) - tolower(*rhs++);
+    }
+    if (!result) {
+        if (*lhs) {
+            return 1;
+        } else if (*rhs) {
+            return -1;
+        }
+        return 0;
+    }
+    return result;
+}
+
 // used by the page handlers
 typedef struct {
     char path_and_query[513];
@@ -67,6 +84,80 @@ typedef struct {
     int fd;
 } httpd_context_t;
 
+typedef struct {
+    const char* ext;
+    const char* ctype;
+} httpd_content_entry;
+
+static httpd_content_entry httpd_content_types[] = {
+    {".aac", "audio/aac"},
+    {".avif", "image/avif"},
+    {".bin", "application/octet-stream"},
+    {".bmp", "image/bmp"},
+    {".css", "text/css"},
+    {".csv", "text/csv"},
+    {".doc", "application/msword"},
+    {".docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"},
+    {".epub", "application/epub+zip"},
+    {".gz", "application/gzip"},
+    {".gif", "image/gif"},
+    {".ico", "image/x-icon"},
+    {".jar", "application/java-archive"},
+    {".js", "text/javascript"},
+    {".mjs", "text/javascript"},
+    {".json", "application/json"},
+    {".mid", "audio/midi"},
+    {".midi", "audio/midi"},
+    {".mp3", "audio/mpeg"},
+    {".mp4", "video/mp4"},
+    {".mpeg", "video/mpeg"},
+    {".ogg", "audio/ogg"},
+    {".otf", "font/otf"},
+    {".pdf", "application/pdf"},
+    {".ppt", "application/vnd.ms-powerpoint"},
+    {".pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"},
+    {".rar", "application/vnd.rar"},
+    {".rtf", "application/rtf"},
+    {".jpg", "image/jpeg"},
+    {".jpeg", "image/jpeg"},
+    {".png", "image/png"},
+    {".apng", "image/apng"},
+    {".htm", "text/html"},
+    {".html", "text/html"},
+    {".svg", "image/svg+xml"},
+    {".tar", "application/x-tar"},
+    {".tif", "image/tiff"},
+    {".tiff", "image/tiff"},
+    {".ttf", "font/ttf"},
+    {".txt", "text/plain"},
+    {".vsd", "application/vnd.visio"},
+    {".wav", "audio/wav"},
+    {".weba", "audio/webm"},
+    {".webm", "video/webm"},
+    {".webp", "image/webp"},
+    {".woff", "font/woff"},
+    {".woff2", "font/woff2"},
+    {".xhtm", "application/xhtml+xml"},
+    {".xhtml", "application/xhtml+xml"},
+    {".xls", "application/vnd.ms-excel"},
+    {".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"},
+    {".xml", "application/xml"},
+    {".zip", "application/zip"},
+    {".7z", "application/x-7z-compressed"}
+};
+static const size_t httpd_content_types_size = 54;
+static const char* httpd_content_type(const char* path) {
+    const char* ext = strrchr(path,'.');
+    if(ext!=NULL) {
+        // could optimize with a binary search or DFA
+        for(size_t i = 0;i<httpd_content_types_size;++i) {
+            if(0==my_stricmp(httpd_content_types[i].ext,ext)) {
+                return httpd_content_types[i].ctype;
+            }
+        }
+    }
+    return "application/octet-stream";
+}
 // here we put globals we use in the page
 // url encoding tables
 char enc_rfc3986[256] = {0};
@@ -84,23 +175,6 @@ static stat_t fs_stat(const char* path) {
 #ifdef M5STACK_CORE2
 using namespace esp_idf;  // devices
 #endif
-
-// not all compiler vendors implement stricmp
-static int my_stricmp(const char* lhs, const char* rhs) {
-    int result = 0;
-    while (!result && *lhs && *rhs) {
-        result = tolower(*lhs++) - tolower(*rhs++);
-    }
-    if (!result) {
-        if (*lhs) {
-            return 1;
-        } else if (*rhs) {
-            return -1;
-        }
-        return 0;
-    }
-    return result;
-}
 
 enum WIFI_STATUS { WIFI_WAITING, WIFI_CONNECTED, WIFI_CONNECT_FAILED };
 static constexpr const EventBits_t wifi_connected_bit = BIT0;
@@ -257,51 +331,51 @@ static char* httpd_url_decode(char* dst, size_t dstlen, const char* src) {
     return dst;
 }
 
-// static const char* httpd_crack_query(const char* next_query_part,
-//                                      char* out_name, size_t name_size,
-//                                      char* out_value, size_t value_size) {
-//     if (!*next_query_part) return NULL;
+static const char* httpd_crack_query(const char* next_query_part,
+                                     char* out_name, size_t name_size,
+                                     char* out_value, size_t value_size) {
+    if (!*next_query_part) return NULL;
 
-//     const char start = *next_query_part;
-//     if (start == '&' || start == '?') {
-//         ++next_query_part;
-//     }
-//     size_t i = 0;
-//     char* name_cur = out_name;
-//     while (*next_query_part && *next_query_part != '=' &&
-//            *next_query_part != '&' && *next_query_part != ';') {
-//         if (i < name_size) {
-//             *name_cur++ = *next_query_part;
-//         }
-//         ++next_query_part;
-//         ++i;
-//     }
-//     if (name_size) {
-//         *name_cur = '\0';
-//     }
-//     if (!*next_query_part || *next_query_part == '&' ||
-//         *next_query_part == ';') {
-//         if (value_size) {
-//             *out_value = '\0';
-//         }
-//         return next_query_part;
-//     }
-//     ++next_query_part;
-//     i = 0;
-//     char* value_cur = out_value;
-//     while (*next_query_part && *next_query_part != '&' &&
-//            *next_query_part != ';') {
-//         if (i < value_size) {
-//             *value_cur++ = *next_query_part;
-//         }
-//         ++next_query_part;
-//         ++i;
-//     }
-//     if (value_size) {
-//         *value_cur = '\0';
-//     }
-//     return next_query_part;
-// }
+    const char start = *next_query_part;
+    if (start == '&' || start == '?') {
+        ++next_query_part;
+    }
+    size_t i = 0;
+    char* name_cur = out_name;
+    while (*next_query_part && *next_query_part != '=' &&
+           *next_query_part != '&' && *next_query_part != ';') {
+        if (i < name_size) {
+            *name_cur++ = *next_query_part;
+        }
+        ++next_query_part;
+        ++i;
+    }
+    if (name_size) {
+        *name_cur = '\0';
+    }
+    if (!*next_query_part || *next_query_part == '&' ||
+        *next_query_part == ';') {
+        if (value_size) {
+            *out_value = '\0';
+        }
+        return next_query_part;
+    }
+    ++next_query_part;
+    i = 0;
+    char* value_cur = out_value;
+    while (*next_query_part && *next_query_part != '&' &&
+           *next_query_part != ';') {
+        if (i < value_size) {
+            *value_cur++ = *next_query_part;
+        }
+        ++next_query_part;
+        ++i;
+    }
+    if (value_size) {
+        *value_cur = '\0';
+    }
+    return next_query_part;
+}
 
 static void httpd_send_block(const char* data, size_t len, void* arg) {
     if (!data || !len) {
@@ -441,18 +515,19 @@ done:
 static esp_err_t httpd_request_handler(httpd_req_t* req) {
     // match the handler
     int handler_index = www_response_handler_match(req->uri);
+    // printf("url: %s, index: %d\n",req->uri,handler_index);
     // we keep our response context on the stack if we can
     httpd_context_t resp_arg;
     // but for async responses it must be on the heap
     httpd_context_t* resp_arg_async;
     if (req->method == HTTP_GET || req->method == HTTP_POST) {  // async is only for GET and POST
-        if (handler_index == 4) { // this is our FS handler
+        if (handler_index == WWW_RESPONSE_HANDLER_COUNT-1) { // this is our FS handler
             bool is_upload = req->method != HTTP_GET;
             // get the filepath from the path and query string
             char path[513];
             const char* sze = strchr(req->uri, '?');
             size_t path_len =
-                sze == nullptr ? strlen(req->uri) : sze - req->uri + 1;
+                sze == nullptr ? strlen(req->uri) : sze - req->uri;
             httpd_url_decode(path, path_len, req->uri);
             path[path_len] = '\0';
             if (is_upload) {
@@ -592,22 +667,46 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
             }
             stat_t st;
             if (0 == stat(path, &st) && ((st.st_mode & S_IFMT) != S_IFDIR)) {
+                const char* pq = strrchr(req->uri,'?');
+                char cname[64],cval[64];
+                bool downloading = false;
+                if(pq!=NULL) {
+                    while (NULL!=(pq=httpd_crack_query(pq,cname,sizeof(cname),cval,sizeof(cval)))) {
+                        if(cname[0]!='\0' && 0==my_stricmp(cname,"download")) {
+                            puts("Downloading");
+                            downloading = true;
+                            break;
+                        }
+                    };
+                }
                 // is file
-                fputs("Downloading ",stdout);
-                puts(path);
-                static const char* header1 =
-                    "HTTP/1.1 200 OK\r\nContent-Disposition: attachment; "
-                    "filename=\"";
                 const char* szpfn = path + 8;
                 const char* szfn = strrchr(szpfn, '/');
-                httpd_send(req, header1, strlen(header1));
                 if (szfn != nullptr)
                     ++szfn;
                 else
                     szfn = szpfn;
-                httpd_send(req, szfn, strlen(szfn));
-                static const char* header2 = "\"\r\nContent-Length: ";
-                httpd_send(req, header2, strlen(header2));
+                
+                if(downloading) {
+                    fputs("Downloading ",stdout);
+                    puts(path);
+                    static const char* headerd =
+                        "HTTP/1.1 200 OK\r\nContent-Disposition: attachment; "
+                        "filename=\"";
+                    httpd_send(req, headerd, strlen(headerd));
+                    httpd_send(req, szfn, strlen(szfn));
+                    static const char* headerd2 = "\"\r\nContent-Length: ";
+                    httpd_send(req, headerd2, strlen(headerd2));    
+                
+                } else {
+                    static const char* headerv =
+                        "HTTP/1.1 200 OK\r\nContent-Type: ";
+                    httpd_send(req, headerv, strlen(headerv));
+                    const char* ct = httpd_content_type(path);
+                    httpd_send(req,ct,strlen(ct));
+                    static const char* header2 = "\r\nContent-Length: ";
+                    httpd_send(req, header2, strlen(header2));    
+                }
                 char buf[1024];
                 size_t l = (size_t)st.st_size;
                 itoa((int)l, buf, 10);
@@ -635,7 +734,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                 } else {
                     handler_index = -1;
                 }
-            }
+            } 
         }
         resp_arg_async = (httpd_context_t*)malloc(sizeof(httpd_context_t));
         if (resp_arg_async == nullptr) {  // no memory
@@ -667,7 +766,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
         return ESP_OK;
     }
 synchronous:
-    // must do it synchronously
+    // must serve synchronously
     resp_arg.fd = -1;
     resp_arg.handle = req;
     resp_arg.method = req->method;
@@ -719,12 +818,10 @@ static void httpd_init() {
                            .handler = httpd_request_handler,
                            .user_ctx = nullptr};
     ESP_ERROR_CHECK(httpd_register_uri_handler(httpd_handle, &handler));
-    handler = {.uri = "/",
-               .method = HTTP_POST,
-               .handler = httpd_request_handler,
-               .user_ctx = nullptr};
+    handler.method = HTTP_POST;
     ESP_ERROR_CHECK(httpd_register_uri_handler(httpd_handle, &handler));
 }
+
 static void httpd_end() {
     if (httpd_handle == nullptr) {
         return;
@@ -867,11 +964,12 @@ extern "C" void app_main() {
     if (loaded) {
         printf("Initializing WiFi connection to %s\n", wifi_ssid);
         wifi_init(wifi_ssid, wifi_pass);
+        TaskHandle_t loop_handle;
+        xTaskCreate(loop_task, "loop_task", 4096, nullptr, 10, &loop_handle);
+        printf("Free SRAM: %0.2fKB\n", esp_get_free_internal_heap_size() / 1024.f);
+    } else {
+        puts("Create wifi.txt with the SSID on the first line, and password on the second line and upload it to SPIFFS");
     }
-
-    TaskHandle_t loop_handle;
-    xTaskCreate(loop_task, "loop_task", 4096, nullptr, 10, &loop_handle);
-    printf("Free SRAM: %0.2fKB\n", esp_get_free_internal_heap_size() / 1024.f);
 }
 static void loop() {
     static bool is_connected = false;
