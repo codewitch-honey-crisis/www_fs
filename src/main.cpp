@@ -29,9 +29,13 @@
 #ifdef NEOPIXEL
 #ifdef C6DEVKITC1
 #define NEOPIXEL_DOUT 8
+#define NEOPIXEL_FORMAT LED_STRIP_COLOR_COMPONENT_FMT_RGB
+#define NEOPIXEL_TYPE LED_MODEL_SK6812
 #endif
 #ifdef FREENOVE_S3_DEVKIT
 #define NEOPIXEL_DOUT 48
+#define NEOPIXEL_FORMAT LED_STRIP_COLOR_COMPONENT_FMT_GRB
+#define NEOPIXEL_TYPE LED_MODEL_WS2812
 #endif
 
 #endif
@@ -720,18 +724,15 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                         "filename=\"";
                     httpd_send(req, headerd, strlen(headerd));
                     httpd_send(req, szfn, strlen(szfn));
-                    static const char* headerd2 = "\"\r\nContent-Length: ";
-                    httpd_send(req, headerd2, strlen(headerd2));    
-                
                 } else {
                     static const char* headerv =
                         "HTTP/1.1 200 OK\r\nContent-Type: ";
                     httpd_send(req, headerv, strlen(headerv));
                     const char* ct = httpd_content_type(path);
                     httpd_send(req,ct,strlen(ct));
-                    static const char* header2 = "\r\nContent-Length: ";
-                    httpd_send(req, header2, strlen(header2));    
                 }
+                static const char* header2 = "\r\nContent-Length: ";
+                httpd_send(req, header2, strlen(header2));    
                 char buf[1024];
                 size_t l = (size_t)st.st_size;
                 itoa((int)l, buf, 10);
@@ -789,7 +790,6 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
             handler_fn =
                 (httpd_work_fn_t)www_response_handlers[handler_index].handler;
         }
-
         // and off we go.
         httpd_queue_work(req->handle, handler_fn, resp_arg_async);
         return ESP_OK;
@@ -939,8 +939,8 @@ led_strip_handle_t neopixel_handle = NULL;
 static void neopixel_init() {
     led_strip_config_t led_cfg;
     memset(&led_cfg,0,sizeof(led_cfg));
-    led_cfg.color_component_format = LED_STRIP_COLOR_COMPONENT_FMT_RGB;
-    led_cfg.led_model = LED_MODEL_SK6812;
+    led_cfg.color_component_format = NEOPIXEL_FORMAT;
+    led_cfg.led_model = NEOPIXEL_TYPE;
     led_cfg.max_leds = 1;
     led_cfg.strip_gpio_num = (gpio_num_t)NEOPIXEL_DOUT;
     led_strip_rmt_config_t led_rmt_cfg;

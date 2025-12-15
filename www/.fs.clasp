@@ -38,7 +38,7 @@
                 strcat(tmp2,"/");
             }
 %>
-            <tr><td><%if(!is_dir){%><form action="." method="post"><button type="submit" name="delete" value="<%=de->d_name%>">Delete</button></form><% } else {%>&nbsp;<%}%></td><td><a href="<%=tmp2%>?download"><img src="/images/download.png" /></a><td><a href="<%=tmp2%>"><%=de->d_name%></a><td><%=is_dir?NAN:(((float)st.st_size)/1024.f)%><%=is_dir?"":"KB"%></td><td><%=st.st_mtim.tv_sec%></td></tr>
+            <tr><td><%if(!is_dir){%><form action="." method="post"><button type="submit" name="delete" value="<%=de->d_name%>">Delete</button></form><% } else {%>&nbsp;<%}%></td><td><%if(!is_dir){%><a href="<%=tmp2%>?download"><img src="/images/download.png" /></a><%} else {%>&nbsp;<%}%><td><a href="<%=tmp2%>"><%=de->d_name%></a><td><%=is_dir?NAN:(((float)st.st_size)/1024.f)%><%=is_dir?"":"KB"%></td><td><%=st.st_mtim.tv_sec%></td></tr>
         <%}%>        
         </table>
     </body>

@@ -255,10 +255,15 @@ void www_content_fs_clasp(void* resp_arg) {
      } else {
      httpd_send_block("6\r\n&nbsp;\r\n", 11,  resp_arg);
     }
-     httpd_send_block("12\r\n</td><td><a href=\"\r\n", 24,  resp_arg);
+     httpd_send_block("9\r\n</td><td>\r\n", 14,  resp_arg);
+    if(!is_dir){
+     httpd_send_block("9\r\n<a href=\"\r\n", 14,  resp_arg);
      httpd_send_expr(tmp2,  resp_arg);
-     httpd_send_block("3e\r\n?download\"><img src=\"/images/download.png\" /></a><td><a hr"
-        "ef=\"\r\n", 68,  resp_arg);
+     httpd_send_block("31\r\n?download\"><img src=\"/images/download.png\" /></a>\r\n", 55,  resp_arg);
+    } else {
+     httpd_send_block("6\r\n&nbsp;\r\n", 11,  resp_arg);
+    }
+     httpd_send_block("d\r\n<td><a href=\"\r\n", 18,  resp_arg);
      httpd_send_expr(tmp2,  resp_arg);
      httpd_send_block("2\r\n\">\r\n", 7,  resp_arg);
      httpd_send_expr(de->d_name,  resp_arg);
