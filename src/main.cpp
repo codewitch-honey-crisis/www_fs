@@ -30,6 +30,10 @@
 #ifdef C6DEVKITC1
 #define NEOPIXEL_DOUT 8
 #endif
+#ifdef FREENOVE_S3_DEVKIT
+#define NEOPIXEL_DOUT 48
+#endif
+
 #endif
 
 // Example of adding SD support to the C6 kit:
