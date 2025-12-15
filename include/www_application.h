@@ -28,6 +28,8 @@ extern sdmmc_card_t* sd_card;
 
 // not all compiler vendors implement stricmp
 int my_stricmp(const char* lhs, const char* rhs);
+/// @brief Initializes the URL encoding tables
+void httpd_init_encoding(void);
 /// @brief Sends data to a connected socket
 /// @param data The data to send
 /// @param len The length of the data

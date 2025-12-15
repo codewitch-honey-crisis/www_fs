@@ -548,14 +548,7 @@ static void httpd_init() {
     if (httpd_ui_sync == nullptr) {
         ESP_ERROR_CHECK(ESP_ERR_NO_MEM);
     }
-    for (int i = 0; i < 256; i++) {
-        enc_rfc3986[i] =
-            isalnum(i) || i == '~' || i == '-' || i == '.' || i == '_' ? i : 0;
-        enc_html5[i] =
-            isalnum(i) || i == '*' || i == '-' || i == '.' || i == '_' ? i
-            : (i == ' ')                                               ? '+'
-                                                                       : 0;
-    }
+    httpd_init_encoding();
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.max_uri_handlers = 2;
     config.server_port = 80;
