@@ -9,37 +9,6 @@
 #define UPLOAD_BUFFER_SIZE 8192
 #define UPLOAD_WORKING_SIZE 8192
 
-// SD support on the Core2
-#ifdef M5STACK_CORE2
-#define SPI_PORT SPI3_HOST
-#define SPI_CLK 18
-#define SPI_MISO 38
-#define SPI_MOSI 23
-
-#define SD_PORT SPI_PORT
-#define SD_CS 4
-#endif
-// SD support on the Freenove S3 Devkit
-#ifdef FREENOVE_S3_DEVKIT
-#define SDMMC_D0 40
-#define SDMMC_CLK 39
-#define SDMMC_CMD 38
-#endif
-
-#ifdef NEOPIXEL
-#ifdef C6DEVKITC1
-#define NEOPIXEL_DOUT 8
-#define NEOPIXEL_FORMAT LED_STRIP_COLOR_COMPONENT_FMT_RGB
-#define NEOPIXEL_TYPE LED_MODEL_SK6812
-#endif
-#ifdef FREENOVE_S3_DEVKIT
-#define NEOPIXEL_DOUT 48
-#define NEOPIXEL_FORMAT LED_STRIP_COLOR_COMPONENT_FMT_GRB
-#define NEOPIXEL_TYPE LED_MODEL_WS2812
-#endif
-
-#endif
-
 // Example of adding SD support to the C6 kit:
 // #ifdef C6DEVKITC1
 // #define SPI_PORT SPI2_HOST
@@ -670,10 +639,7 @@ static void spiffs_init() {
     conf.partition_label = NULL;
     conf.max_files = 5;
     conf.format_if_mount_failed = true;
-    if (ESP_OK != esp_vfs_spiffs_register(&conf)) {
-        puts("Unable to initialize SPIFFS");
-        while (1) vTaskDelay(5);
-    }
+    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&conf));
 }
 
 static void loop();
@@ -682,7 +648,7 @@ static void loop_task(void* arg) {
     while (1) {
         loop();
         uint32_t ms = pdTICKS_TO_MS(xTaskGetTickCount());
-        if (ms > ts + 200) {
+        if (ms >= ts + 200) {
             ms = pdTICKS_TO_MS(xTaskGetTickCount());
             vTaskDelay(5);
         }

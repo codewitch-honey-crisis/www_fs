@@ -5,6 +5,8 @@
 #include <ctype.h>
 #include <dirent.h>
 #include <time.h>
+#include "hardware.h"
+#include "sd_protocol_types.h"  
 #ifdef NEOPIXEL
 #include "led_strip.h"
 #endif
