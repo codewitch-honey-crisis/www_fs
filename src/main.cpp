@@ -72,6 +72,7 @@
 #include "led_strip.h"
 #include "led_strip_rmt.h"
 #endif
+
 // not all compiler vendors implement stricmp
 static int my_stricmp(const char* lhs, const char* rhs) {
     int result = 0;
@@ -208,11 +209,11 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
             esp_wifi_connect();
             ++wifi_retry_count;
         } else {
-            puts("wifi connection failed");
+            puts("WiFi connection failed");
             xEventGroupSetBits(wifi_event_group, wifi_fail_bit);
         }
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-        puts("got IP address");
+        puts("Got IP address");
         wifi_retry_count = 0;
         ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
         memcpy(&wifi_ip, &event->ip_info.ip, sizeof(wifi_ip));
