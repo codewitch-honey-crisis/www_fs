@@ -9,3 +9,13 @@ It's written with the ESP-IDF, and the project is made for platformIO. Several d
 See the [ClASP documentation](https://github.com/codewitch-honey-crisis/clasp) for details on the contents of www
 
 Note that you can use ports.ini to set your monitor and upload ports. It's not in the platformio.ini file so that you can change it without triggering a rebuild.
+
+Using:
+
+Choose your device, and/or add one in platformio.ini
+
+Under ./data add a wifi.txt file with your SSID on one line, and password on the next line.
+
+Upload Filesystem Image under Project Tasks.
+
+Finally, upload and monitor.
