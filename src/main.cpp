@@ -8,7 +8,7 @@
 #define UPLOAD_BUFFER_SIZE 8192
 #define DOWNLOAD_BUFFER_SIZE 8192
 #define UPLOAD_WORKING_SIZE 8192
-
+#define HTTPD_STACK_SIZE (32*1024)
 #include <ctype.h>
 #include <math.h>
 #include <sys/stat.h>
@@ -514,7 +514,7 @@ static void httpd_init() {
     config.server_port = 80;
     config.max_open_sockets = (CONFIG_LWIP_MAX_SOCKETS - 3);
     config.uri_match_fn = httpd_match;
-    config.stack_size = 32*1024;
+    config.stack_size = HTTPD_STACK_SIZE;
     ESP_ERROR_CHECK(httpd_start(&httpd_handle, &config));
     httpd_uri_t handler = {.uri = "/",
                            .method = HTTP_GET,
