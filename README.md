@@ -14,6 +14,8 @@ Note that you can use ports.ini to set your monitor and upload ports. It's not i
 
 Choose your device, and/or add one in platformio.ini
 
+Set your serial port in ports.ini
+
 Under ./data add a wifi.txt file with your SSID on one line, and password on the next line.
 
 Upload Filesystem Image under Project Tasks.
