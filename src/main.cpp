@@ -427,10 +427,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                     httpd_send(req, header2, strlen(header2));    
                 
                 }
-                char* buf = (char*)malloc(8192);
-                if(buf==NULL) {
-                    return ESP_FAIL;
-                }
+                char buf[8192];
                 size_t l = (size_t)st.st_size;
                 itoa((int)l, buf, 10);
                 httpd_send(req, buf, strlen(buf));
@@ -438,15 +435,13 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                 httpd_send(req, header3, strlen(header3));
                 FILE* file = fopen(path, "rb");
                 if (!file) {
-                    free(buf);
                     return ESP_FAIL;
                 }
-                l = fread(buf, 1, sizeof(8192), file);
+                l = fread(buf, 1, sizeof(buf), file);
                 while (l > 0) {
                     httpd_send(req, buf, l);
-                    l = fread(buf, 1, sizeof(8192), file);
+                    l = fread(buf, 1, sizeof(buf), file);
                 }
-                free(buf);
                 fclose(file);
 #ifdef NEOPIXEL_DOUT
                 led_strip_clear(neopixel_handle);
@@ -533,6 +528,7 @@ static void httpd_init() {
     config.server_port = 80;
     config.max_open_sockets = (CONFIG_LWIP_MAX_SOCKETS - 3);
     config.uri_match_fn = httpd_match;
+    config.stack_size = 32*1024;
     ESP_ERROR_CHECK(httpd_start(&httpd_handle, &config));
     httpd_uri_t handler = {.uri = "/",
                            .method = HTTP_GET,
