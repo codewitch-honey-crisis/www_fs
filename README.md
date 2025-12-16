@@ -10,7 +10,7 @@ See the [ClASP documentation](https://github.com/codewitch-honey-crisis/clasp) f
 
 Note that you can use ports.ini to set your monitor and upload ports. It's not in the platformio.ini file so that you can change it without triggering a rebuild.
 
-Using:
+### Using:
 
 Choose your device, and/or add one in platformio.ini
 
