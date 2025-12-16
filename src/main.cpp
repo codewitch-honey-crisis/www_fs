@@ -27,13 +27,14 @@
 #include "esp_spiffs.h"
 #include "esp_vfs_fat.h"
 #include "esp_wifi.h"
-#include "mpm_parser.h"
 #include "nvs_flash.h"
 #include "sdmmc_cmd.h"
 #ifdef NEOPIXEL_DOUT
 #include "led_strip.h"
 #include "led_strip_rmt.h"
 #endif
+#include "wifi.h"
+#include "mpm_parser.h"
 #define WWW_CONTENT_IMPLEMENTATION
 #include "www_content.h"
 
@@ -41,105 +42,8 @@
 using namespace esp_idf;  // devices
 #endif
 
-typedef enum { WIFI_WAITING,
-               WIFI_CONNECTED,
-               WIFI_CONNECT_FAILED } wifi_status_t;
-static constexpr const EventBits_t wifi_connected_bit = BIT0;
-static constexpr const EventBits_t wifi_fail_bit = BIT1;
-static EventGroupHandle_t wifi_event_group = NULL;
 static char wifi_ssid[65];
 static char wifi_pass[129];
-static esp_ip4_addr_t wifi_ip;
-static size_t wifi_retry_count = 0;
-
-static void wifi_event_handler(void* arg, esp_event_base_t event_base,
-                               int32_t event_id, void* event_data) {
-    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
-        esp_wifi_connect();
-    } else if (event_base == WIFI_EVENT &&
-               event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        if (wifi_retry_count < 10) {
-            esp_wifi_connect();
-            ++wifi_retry_count;
-        } else {
-            puts("WiFi connection failed");
-            xEventGroupSetBits(wifi_event_group, wifi_fail_bit);
-        }
-    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-        puts("Got IP address");
-        wifi_retry_count = 0;
-        ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
-        memcpy(&wifi_ip, &event->ip_info.ip, sizeof(wifi_ip));
-        xEventGroupSetBits(wifi_event_group, wifi_connected_bit);
-    }
-}
-
-static bool wifi_load(const char* path, char* ssid, char* pass) {
-    FILE* file = fopen(path, "r");
-    if (file != nullptr) {
-        // parse the file
-        fgets(ssid, 64, file);
-        char* sv = strchr(ssid, '\n');
-        if (sv != nullptr) *sv = '\0';
-        sv = strchr(ssid, '\r');
-        if (sv != nullptr) *sv = '\0';
-        fgets(pass, 128, file);
-        fclose(file);
-        sv = strchr(pass, '\n');
-        if (sv != nullptr) *sv = '\0';
-        sv = strchr(pass, '\r');
-        if (sv != nullptr) *sv = '\0';
-        return true;
-    }
-    return false;
-}
-
-static void wifi_init(const char* ssid, const char* password) {
-    nvs_flash_init();
-    wifi_event_group = xEventGroupCreate();
-
-    ESP_ERROR_CHECK(esp_netif_init());
-
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_create_default_wifi_sta();
-
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-
-    esp_event_handler_instance_t instance_any_id;
-    esp_event_handler_instance_t instance_got_ip;
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(
-        WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL,
-        &instance_any_id));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(
-        IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL,
-        &instance_got_ip));
-
-    wifi_config_t wifi_config;
-    memset(&wifi_config, 0, sizeof(wifi_config));
-    memcpy(wifi_config.sta.ssid, ssid, strlen(ssid) + 1);
-    memcpy(wifi_config.sta.password, password, strlen(password) + 1);
-    wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA_WPA2_PSK;
-    wifi_config.sta.sae_pwe_h2e = WPA3_SAE_PWE_BOTH;
-    // wifi_config.sta.sae_h2e_identifier[0]=0;
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
-    ESP_ERROR_CHECK(esp_wifi_start());
-}
-
-static wifi_status_t wifi_status() {
-    if (wifi_event_group == nullptr) {
-        return WIFI_WAITING;
-    }
-    EventBits_t bits = xEventGroupGetBits(wifi_event_group) &
-                       (wifi_connected_bit | wifi_fail_bit);
-    if (bits == wifi_connected_bit) {
-        return WIFI_CONNECTED;
-    } else if (bits == wifi_fail_bit) {
-        return WIFI_CONNECT_FAILED;
-    }
-    return WIFI_WAITING;
-}
 
 static httpd_handle_t httpd_handle = nullptr;
 static SemaphoreHandle_t httpd_ui_sync = nullptr;
@@ -150,7 +54,7 @@ typedef struct {
     size_t remaining;
     size_t length;
     uint32_t start;
-    int last_out;
+    int previous_percent;
     char buffer[UPLOAD_BUFFER_SIZE];
     char working[UPLOAD_WORKING_SIZE + 1];
     size_t buffer_size;
@@ -161,47 +65,47 @@ static int httpd_buffered_read(void* state) {
     if (state == nullptr) {
         return -1;
     }
-    httpd_recv_buffer_t* rfb = (httpd_recv_buffer_t*)state;
-    char buf[32];
-    int num;
+    httpd_recv_buffer_t* recv_buf = (httpd_recv_buffer_t*)state;
+    int percent;
     char result;
-    if (rfb->buffer_pos >= rfb->buffer_size) {
-        if (!rfb->remaining) {
+    if (recv_buf->buffer_pos >= recv_buf->buffer_size) {
+        if (!recv_buf->remaining) {
             goto done;
         }
         // reset the WDT
         vTaskDelay(5);
-        int r = httpd_req_recv(rfb->req, rfb->buffer,
-                               rfb->remaining <= sizeof(rfb->buffer)
-                                   ? rfb->remaining
-                                   : sizeof(rfb->buffer));
-        num = ((float)(rfb->length - rfb->remaining) / (float)rfb->length) * 100;
-        if (num != rfb->last_out) {
-            itoa(num, buf, 10);
+        int r = httpd_req_recv(recv_buf->req, recv_buf->buffer,
+                               recv_buf->remaining <= sizeof(recv_buf->buffer)
+                                   ? recv_buf->remaining
+                                   : sizeof(recv_buf->buffer));
+        percent = ((float)(recv_buf->length - recv_buf->remaining) / (float)recv_buf->length) * 100;
+        if (percent != recv_buf->previous_percent) {
+            char num_buf[32];
+            itoa(percent, num_buf, 10);
             fputs("Uploading ", stdout);
-            fputs(buf, stdout);
+            fputs(num_buf, stdout);
             puts("% complete");
-            rfb->last_out = num;
+            recv_buf->previous_percent = percent;
         }
         if (r < 1) {
-            rfb->buffer_size = 0;
-            rfb->buffer_pos = 0;
+            recv_buf->buffer_size = 0;
+            recv_buf->buffer_pos = 0;
             if (r == 0) {
                 goto done;
             }
-            rfb->remaining = 0;
+            recv_buf->remaining = 0;
             return -1;
         }
 
-        rfb->buffer_size = r;
-        rfb->remaining -= r;
-        rfb->buffer_pos = 0;
-        if (rfb->buffer_size == 0) {
+        recv_buf->buffer_size = r;
+        recv_buf->remaining -= r;
+        recv_buf->buffer_pos = 0;
+        if (recv_buf->buffer_size == 0) {
             goto done;
         }
     }
-    result = rfb->buffer[rfb->buffer_pos];
-    ++rfb->buffer_pos;
+    result = recv_buf->buffer[recv_buf->buffer_pos];
+    ++recv_buf->buffer_pos;
     return result;
 done:
     return -1;
@@ -703,8 +607,11 @@ static void loop() {
             httpd_init();
             // set the url text to our website
             static char url_text[256];
+            uint32_t ip = wifi_ip_address();
+            esp_ip4_addr addy;
+            addy.addr = ip;
             snprintf(url_text, sizeof(url_text), "http://" IPSTR,
-                     IP2STR(&wifi_ip));
+                     IP2STR(&addy));
             puts(url_text);
             uint32_t free_sram = esp_get_free_internal_heap_size();
             printf("Free SRAM: %0.2fKB\n",
@@ -718,8 +625,8 @@ static void loop() {
             puts("Disconnected");
             is_connected = false;
             httpd_end();
-            wifi_retry_count = 0;
-            esp_wifi_start();
+            wifi_restart();
+            
             printf("Free SRAM: %0.2fKB\n",
                    esp_get_free_internal_heap_size() / 1024.f);
         }
