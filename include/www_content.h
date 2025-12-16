@@ -300,7 +300,7 @@ void www_content_index_clasp(void* resp_arg) {
         "d><a href=\"./spiffs/\">/spiffs/</a></td></tr>\n        \r\n", 438,  resp_arg);
     
     #if defined(SD_CS) || defined(SDMMC_D0)
-                if(sd_card!=nullptr) {
+                if(sdcard_init()) {
      httpd_send_block("43\r\n\n            <tr><td><a href=\"./sdcard/\">/sdcard/</a></tr>"
         "\n        \r\n", 73,  resp_arg);
     }

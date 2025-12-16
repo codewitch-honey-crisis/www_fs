@@ -11,7 +11,7 @@
             <tr><td><a href="./spiffs/">/spiffs/</a></td></tr>
         <%
 #if defined(SD_CS) || defined(SDMMC_D0)
-            if(sd_card!=nullptr) {%>
+            if(sdcard_init()) {%>
             <tr><td><a href="./sdcard/">/sdcard/</a></tr>
         <%}
 #endif

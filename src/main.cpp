@@ -20,7 +20,6 @@
 #include <m5core2_power.hpp>  // AXP192 power management (core2)
 #endif
 #include "driver/gpio.h"
-#include "driver/sdmmc_host.h"
 #include "driver/spi_master.h"
 #include "driver/uart.h"
 #include "esp_http_server.h"
@@ -28,11 +27,11 @@
 #include "esp_vfs_fat.h"
 #include "esp_wifi.h"
 #include "nvs_flash.h"
-#include "sdmmc_cmd.h"
 #ifdef NEOPIXEL_DOUT
 #include "led_strip.h"
 #include "led_strip_rmt.h"
 #endif
+#include "sdcard.h"
 #include "wifi.h"
 #include "mpm_parser.h"
 #define WWW_CONTENT_IMPLEMENTATION
@@ -466,52 +465,6 @@ static void spi_init() {
     ESP_ERROR_CHECK(spi_bus_initialize(SPI_PORT, &buscfg, SPI_DMA_CH_AUTO));
 }
 #endif
-#if defined(SD_CS) || defined(SDMMC_D0)
-sdmmc_card_t* sd_card = nullptr;
-static bool sd_init() {
-    static const char mount_point[] = "/sdcard";
-    esp_vfs_fat_sdmmc_mount_config_t mount_config;
-    memset(&mount_config, 0, sizeof(mount_config));
-    mount_config.format_if_mount_failed = false;
-    mount_config.max_files = 5;
-    mount_config.allocation_unit_size = 0;
-#if defined(SD_CS)
-    sdmmc_host_t host = SDSPI_HOST_DEFAULT();
-    host.slot = SD_PORT;
-    // // This initializes the slot without card detect (CD) and write
-    // protect (WP)
-    // // signals.
-    sdspi_device_config_t slot_config;
-    memset(&slot_config, 0, sizeof(slot_config));
-    slot_config.host_id = (spi_host_device_t)SD_PORT;
-    slot_config.gpio_cs = (gpio_num_t)SD_CS;
-    slot_config.gpio_cd = SDSPI_SLOT_NO_CD;
-    slot_config.gpio_wp = SDSPI_SLOT_NO_WP;
-    slot_config.gpio_int = GPIO_NUM_NC;
-    if (ESP_OK != esp_vfs_fat_sdspi_mount(mount_point, &host, &slot_config,
-                                          &mount_config, &sd_card)) {
-        return false;
-    }
-    return true;
-#else
-    sdmmc_host_t host = SDMMC_HOST_DEFAULT();
-    host.flags = SDMMC_HOST_FLAG_1BIT;  // use 1-line SD mode
-    host.max_freq_khz = 20 * 1000;
-    sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
-    slot_config.clk = (gpio_num_t)SDMMC_CLK;
-    slot_config.cmd = (gpio_num_t)SDMMC_CMD;
-    slot_config.d0 = (gpio_num_t)SDMMC_D0;
-    slot_config.width = 1;
-    // assuming the board is built correctly, we don't need this:
-    // slot_config.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
-    esp_err_t ret = esp_vfs_fat_sdmmc_mount(mount_point, &host, &slot_config, &mount_config, &sd_card);
-    if (ret != ESP_OK) {
-        return 0;
-    }
-    return true;
-#endif
-}
-#endif
 
 #ifdef NEOPIXEL_DOUT
 led_strip_handle_t neopixel_handle = NULL;
@@ -576,7 +529,7 @@ extern "C" void app_main() {
     wifi_pass[0] = 0;
 
 #if defined(SD_CS) || defined(SDMMC_D0)
-    if (sd_init()) {
+    if (sdcard_init()) {
         puts("SD card found, looking for wifi.txt creds");
         loaded = wifi_load("/sdcard/wifi.txt", wifi_ssid, wifi_pass);
     }
