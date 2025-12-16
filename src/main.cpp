@@ -9,17 +9,6 @@
 #define UPLOAD_BUFFER_SIZE 8192
 #define UPLOAD_WORKING_SIZE 8192
 
-// Example of adding SD support to the C6 kit:
-// #ifdef C6DEVKITC1
-// #define SPI_PORT SPI2_HOST
-// #define SPI_CLK 6
-// #define SPI_MISO 19
-// #define SPI_MOSI 20
-
-// #define SD_PORT SPI_PORT
-// #define SD_CS 19
-// #endif
-
 #include <ctype.h>
 #include <math.h>
 #include <sys/stat.h>
@@ -45,10 +34,6 @@
 #include "led_strip.h"
 #include "led_strip_rmt.h"
 #endif
-
-// here we put globals we use in the page
-// url encoding tables
-
 #define WWW_CONTENT_IMPLEMENTATION
 #include "www_content.h"
 

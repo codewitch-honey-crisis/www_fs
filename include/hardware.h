@@ -1,5 +1,5 @@
 #ifndef HARDWARE_H
-#define HARDWRE_H
+#define HARDWARE_H
 
 // SD support on the Core2
 #ifdef M5STACK_CORE2
@@ -17,6 +17,17 @@
 #define SDMMC_CLK 39
 #define SDMMC_CMD 38
 #endif
+
+// Example of adding SD support to the C6 kit:
+// #ifdef C6DEVKITC1
+// #define SPI_PORT SPI2_HOST
+// #define SPI_CLK 6
+// #define SPI_MISO 19
+// #define SPI_MOSI 20
+
+// #define SD_PORT SPI_PORT
+// #define SD_CS 19
+// #endif
 
 #ifdef NEOPIXEL
 #ifdef C6DEVKITC1
