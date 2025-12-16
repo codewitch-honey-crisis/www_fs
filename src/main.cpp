@@ -2,13 +2,13 @@
 // first line is SSID, next line is password
 
 // for testing, won't actually store the uploaded file on the FS
-//#define NO_STORE_UPLOAD
+// #define NO_STORE_UPLOAD
 
 // 8192 seems to yield the most performance. After that it levels off
 #define UPLOAD_BUFFER_SIZE 8192
 #define DOWNLOAD_BUFFER_SIZE 8192
 #define UPLOAD_WORKING_SIZE 8192
-#define HTTPD_STACK_SIZE (32*1024)
+#define HTTPD_STACK_SIZE (32 * 1024)
 #include <ctype.h>
 #include <math.h>
 #include <sys/stat.h>
@@ -20,16 +20,16 @@
 #include <m5core2_power.hpp>  // AXP192 power management (core2)
 #endif
 #include "driver/gpio.h"
+#include "driver/sdmmc_host.h"
 #include "driver/spi_master.h"
 #include "driver/uart.h"
 #include "esp_http_server.h"
 #include "esp_spiffs.h"
 #include "esp_vfs_fat.h"
-#include "sdmmc_cmd.h"
-#include "driver/sdmmc_host.h"
 #include "esp_wifi.h"
 #include "mpm_parser.h"
 #include "nvs_flash.h"
+#include "sdmmc_cmd.h"
 #ifdef NEOPIXEL_DOUT
 #include "led_strip.h"
 #include "led_strip_rmt.h"
@@ -41,7 +41,9 @@
 using namespace esp_idf;  // devices
 #endif
 
-typedef enum { WIFI_WAITING, WIFI_CONNECTED, WIFI_CONNECT_FAILED }  wifi_status_t;
+typedef enum { WIFI_WAITING,
+               WIFI_CONNECTED,
+               WIFI_CONNECT_FAILED } wifi_status_t;
 static constexpr const EventBits_t wifi_connected_bit = BIT0;
 static constexpr const EventBits_t wifi_fail_bit = BIT1;
 static EventGroupHandle_t wifi_event_group = NULL;
@@ -150,7 +152,7 @@ typedef struct {
     uint32_t start;
     int last_out;
     char buffer[UPLOAD_BUFFER_SIZE];
-    char working[UPLOAD_WORKING_SIZE+1];
+    char working[UPLOAD_WORKING_SIZE + 1];
     size_t buffer_size;
     size_t buffer_pos;
 } httpd_recv_buffer_t;
@@ -173,18 +175,18 @@ static int httpd_buffered_read(void* state) {
                                rfb->remaining <= sizeof(rfb->buffer)
                                    ? rfb->remaining
                                    : sizeof(rfb->buffer));
-        num = ((float)(rfb->length-rfb->remaining)/(float)rfb->length)*100;
-        if(num!=rfb->last_out) {
-            itoa(num,buf,10);
-            fputs("Uploading ",stdout);
-            fputs(buf,stdout);
+        num = ((float)(rfb->length - rfb->remaining) / (float)rfb->length) * 100;
+        if (num != rfb->last_out) {
+            itoa(num, buf, 10);
+            fputs("Uploading ", stdout);
+            fputs(buf, stdout);
             puts("% complete");
             rfb->last_out = num;
         }
         if (r < 1) {
             rfb->buffer_size = 0;
             rfb->buffer_pos = 0;
-            if(r==0) {
+            if (r == 0) {
                 goto done;
             }
             rfb->remaining = 0;
@@ -206,7 +208,7 @@ done:
 }
 static esp_err_t httpd_request_handler(httpd_req_t* req) {
 #ifdef NEOPIXEL_DOUT
-    led_strip_set_pixel(neopixel_handle,0,0,0,255);
+    led_strip_set_pixel(neopixel_handle, 0, 0, 0, 255);
     led_strip_refresh(neopixel_handle);
 #endif
     // match the handler
@@ -216,7 +218,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
     // but for async responses it must be on the heap
     httpd_context_t* resp_arg_async;
     if (req->method == HTTP_GET || req->method == HTTP_POST) {  // async is only for GET and POST
-        if (handler_index == WWW_RESPONSE_HANDLER_COUNT-1) { // this is our FS handler
+        if (handler_index == WWW_RESPONSE_HANDLER_COUNT - 1) {  // this is our FS handler
             bool is_upload = req->method != HTTP_GET;
             // get the filepath from the path and query string
             char path[513];
@@ -227,7 +229,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
             path[path_len] = '\0';
             if (is_upload) {
 #ifdef NEOPIXEL_DOUT
-                led_strip_set_pixel(neopixel_handle,0,255,0,0);
+                led_strip_set_pixel(neopixel_handle, 0, 255, 0, 0);
                 led_strip_refresh(neopixel_handle);
 #endif
                 char ctype[256];
@@ -257,7 +259,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                         mpm_init(be, 0, httpd_buffered_read, recb, &ctx);
                         size_t size = UPLOAD_WORKING_SIZE;
                         mpm_node_t node;
-                        
+
                         bool disposition = false;
                         // parse the MIME data
                         while ((node = mpm_parse(&ctx, recb->working, &size)) >
@@ -294,12 +296,12 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                                                           recb->working) +
                                                          strlen(szeq)] = '\0';
                                                 }
-                                                if(*szeq!='\0') { 
+                                                if (*szeq != '\0') {
                                                     strcat(path, szeq);
 #ifndef NO_STORE_UPLOAD
                                                     remove(path);  // delete if it
-                                                                // exists;
-                                                    fputs("Opened ",stdout);
+                                                                   // exists;
+                                                    fputs("Opened ", stdout);
                                                     puts(path);
                                                     fcur = fopen(path, "wb");
 #else
@@ -314,20 +316,20 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                                     break;
 
                                 case MPM_CONTENT_PART:
-                                    disposition  = false;
+                                    disposition = false;
                                     if (fcur != nullptr) {
                                         fwrite(recb->working, 1, size, fcur);
                                     }
                                     break;
                                 case MPM_CONTENT_END:
-                                    disposition  = false;
+                                    disposition = false;
                                     if (fcur != NULL) {
                                         fclose(fcur);
                                         fcur = NULL;
                                     }
                                     path[path_len] = '\0';
                                     break;
-                                default: // don't care
+                                default:  // don't care
                                     break;
                             }
                             size = UPLOAD_WORKING_SIZE;
@@ -335,10 +337,10 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                     }
                     if (recb != nullptr) {
                         char buf[32];
-                        fputs("Uploading complete in ",stdout);
-                        int num = (((float)pdTICKS_TO_MS(xTaskGetTickCount())-(float)recb->start)/1000.f+.5);
-                        itoa(num,buf,10);
-                        fputs(buf,stdout);
+                        fputs("Uploading complete in ", stdout);
+                        int num = (((float)pdTICKS_TO_MS(xTaskGetTickCount()) - (float)recb->start) / 1000.f + .5);
+                        itoa(num, buf, 10);
+                        fputs(buf, stdout);
                         puts(" seconds");
                         free(recb);
                         recb = nullptr;
@@ -361,10 +363,10 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                         }
                         strcat(path, sz);
 #ifdef NEOPIXEL_DOUT
-                        led_strip_set_pixel(neopixel_handle,0,255,0,0);
+                        led_strip_set_pixel(neopixel_handle, 0, 255, 0, 0);
                         led_strip_refresh(neopixel_handle);
 #endif
-                        fputs("Deleting ",stdout);
+                        fputs("Deleting ", stdout);
                         puts(path);
                         remove(path);
                         path[path_len] = '\0';
@@ -374,12 +376,12 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
             }
             stat_t st;
             if (0 == stat(path, &st) && ((st.st_mode & S_IFMT) != S_IFDIR)) {
-                const char* pq = strrchr(req->uri,'?');
-                char cname[64],cval[64];
+                const char* pq = strrchr(req->uri, '?');
+                char cname[64], cval[64];
                 bool downloading = false;
-                if(pq!=NULL) {
-                    while (NULL!=(pq=httpd_crack_query(pq,cname,sizeof(cname),cval,sizeof(cval)))) {
-                        if(0==my_stricmp(cname,"download")) {
+                if (pq != NULL) {
+                    while (NULL != (pq = httpd_crack_query(pq, cname, sizeof(cname), cval, sizeof(cval)))) {
+                        if (0 == my_stricmp(cname, "download")) {
                             downloading = true;
                             break;
                         }
@@ -392,9 +394,9 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                     ++szfn;
                 else
                     szfn = szpfn;
-                
-                if(downloading) {
-                    fputs("Downloading ",stdout);
+
+                if (downloading) {
+                    fputs("Downloading ", stdout);
                     puts(path);
                     static const char* headerd =
                         "HTTP/1.1 200 OK\r\nContent-Disposition: attachment; "
@@ -402,16 +404,15 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                     httpd_send(req, headerd, strlen(headerd));
                     httpd_send(req, szfn, strlen(szfn));
                     static const char* header2 = "\"\r\nContent-Length: ";
-                    httpd_send(req, header2, strlen(header2));    
+                    httpd_send(req, header2, strlen(header2));
                 } else {
                     static const char* headerv =
                         "HTTP/1.1 200 OK\r\nContent-Type: ";
                     httpd_send(req, headerv, strlen(headerv));
                     const char* ct = httpd_content_type(path);
-                    httpd_send(req,ct,strlen(ct));
+                    httpd_send(req, ct, strlen(ct));
                     static const char* header2 = "\r\nContent-Length: ";
-                    httpd_send(req, header2, strlen(header2));    
-                
+                    httpd_send(req, header2, strlen(header2));
                 }
                 char buf[DOWNLOAD_BUFFER_SIZE];
                 size_t l = (size_t)st.st_size;
@@ -444,7 +445,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                 } else {
                     handler_index = -1;
                 }
-            } 
+            }
         }
         resp_arg_async = (httpd_context_t*)malloc(sizeof(httpd_context_t));
         if (resp_arg_async == nullptr) {  // no memory
@@ -570,7 +571,7 @@ static bool sd_init() {
     mount_config.format_if_mount_failed = false;
     mount_config.max_files = 5;
     mount_config.allocation_unit_size = 0;
-#if defined(SD_CS) 
+#if defined(SD_CS)
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
     host.slot = SD_PORT;
     // // This initializes the slot without card detect (CD) and write
@@ -590,8 +591,8 @@ static bool sd_init() {
     return true;
 #else
     sdmmc_host_t host = SDMMC_HOST_DEFAULT();
-    host.flags = SDMMC_HOST_FLAG_1BIT; //use 1-line SD mode
-    host.max_freq_khz = 20*1000;
+    host.flags = SDMMC_HOST_FLAG_1BIT;  // use 1-line SD mode
+    host.max_freq_khz = 20 * 1000;
     sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
     slot_config.clk = (gpio_num_t)SDMMC_CLK;
     slot_config.cmd = (gpio_num_t)SDMMC_CMD;
@@ -600,7 +601,7 @@ static bool sd_init() {
     // assuming the board is built correctly, we don't need this:
     // slot_config.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
     esp_err_t ret = esp_vfs_fat_sdmmc_mount(mount_point, &host, &slot_config, &mount_config, &sd_card);
-    if(ret!=ESP_OK) {
+    if (ret != ESP_OK) {
         return 0;
     }
     return true;
@@ -612,14 +613,14 @@ static bool sd_init() {
 led_strip_handle_t neopixel_handle = NULL;
 static void neopixel_init() {
     led_strip_config_t led_cfg;
-    memset(&led_cfg,0,sizeof(led_cfg));
+    memset(&led_cfg, 0, sizeof(led_cfg));
     led_cfg.color_component_format = NEOPIXEL_FORMAT;
     led_cfg.led_model = NEOPIXEL_TYPE;
     led_cfg.max_leds = 1;
     led_cfg.strip_gpio_num = (gpio_num_t)NEOPIXEL_DOUT;
     led_strip_rmt_config_t led_rmt_cfg;
-    memset(&led_rmt_cfg,0,sizeof(led_rmt_cfg));
-    ESP_ERROR_CHECK(led_strip_new_rmt_device(&led_cfg,&led_rmt_cfg,&neopixel_handle));
+    memset(&led_rmt_cfg, 0, sizeof(led_rmt_cfg));
+    ESP_ERROR_CHECK(led_strip_new_rmt_device(&led_cfg, &led_rmt_cfg, &neopixel_handle));
 }
 
 #endif
@@ -652,14 +653,14 @@ extern "C" void app_main() {
            ESP_IDF_VERSION_MINOR, ESP_IDF_VERSION_PATCH);
     start_sram = esp_get_free_internal_heap_size();
     printf("Free SRAM: %0.2fKB\n",
-                   start_sram / 1024.f);
+           start_sram / 1024.f);
 #ifdef M5STACK_CORE2
     power_init();  // do this first
 #endif
 #ifdef NEOPIXEL_DOUT
-        neopixel_init();
-        ESP_ERROR_CHECK(led_strip_clear(neopixel_handle));
-        ESP_ERROR_CHECK(led_strip_refresh(neopixel_handle));
+    neopixel_init();
+    ESP_ERROR_CHECK(led_strip_clear(neopixel_handle));
+    ESP_ERROR_CHECK(led_strip_refresh(neopixel_handle));
 #endif
 #ifdef SPI_PORT
     spi_init();  // used by the SD reader
@@ -705,13 +706,11 @@ static void loop() {
             snprintf(url_text, sizeof(url_text), "http://" IPSTR,
                      IP2STR(&wifi_ip));
             puts(url_text);
-            uint32_t free_sram = esp_get_free_internal_heap_size() ;
+            uint32_t free_sram = esp_get_free_internal_heap_size();
             printf("Free SRAM: %0.2fKB\n",
                    free_sram / 1024.f);
             printf("SRAM used for webserver firmware: %0.2fKB\n",
-                   (start_sram-free_sram) / 1024.f);
-            
-            
+                   (start_sram - free_sram) / 1024.f);
         }
     } else {
         if (wifi_status() == WIFI_CONNECT_FAILED) {
