@@ -230,7 +230,6 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                 led_strip_set_pixel(neopixel_handle,0,255,0,0);
                 led_strip_refresh(neopixel_handle);
 #endif
-
                 char ctype[256];
                 FILE* fcur = NULL;
                 httpd_req_get_hdr_value_str(req, "Content-Type", ctype,

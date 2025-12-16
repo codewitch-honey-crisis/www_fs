@@ -1,8 +1,10 @@
 # Web file browser
 
-This firmware allows you to browse SPIFFS or an attached SD card and view, download, delete and upload contents.
+This little bit of firmware allows you to browse SPIFFS or an attached SD card and view, download, delete and upload contents.
 
-It's written in the ESP-IDF, and the project is made for platformIO. Several devices are supported, and it's trivial to add more.
+If your device has a neopixel it can change color based on activity (blue = download, red = upload)
+
+It's written with the ESP-IDF, and the project is made for platformIO. Several devices are supported, and it's trivial to add more. The most conmplicated thing involves adding long file name support under the FAT FS support in menuconfig, and then setting the HTTP server header size to 1024 instead of 512
 
 See the [ClASP documentation](https://github.com/codewitch-honey-crisis/clasp) for details on the contents of www
 
