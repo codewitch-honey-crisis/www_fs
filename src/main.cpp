@@ -4,9 +4,9 @@
 // for testing, won't actually store the uploaded file on the FS
 //#define NO_STORE_UPLOAD
 
-// This is the size of our working buffer. While larger is faster, 
 // 8192 seems to yield the most performance. After that it levels off
 #define UPLOAD_BUFFER_SIZE 8192
+#define DOWNLOAD_BUFFER_SIZE 8192
 #define UPLOAD_WORKING_SIZE 8192
 
 #include <ctype.h>
@@ -314,11 +314,13 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                                     break;
 
                                 case MPM_CONTENT_PART:
+                                    disposition  = false;
                                     if (fcur != nullptr) {
                                         fwrite(recb->working, 1, size, fcur);
                                     }
                                     break;
                                 case MPM_CONTENT_END:
+                                    disposition  = false;
                                     if (fcur != NULL) {
                                         fclose(fcur);
                                         fcur = NULL;
@@ -411,7 +413,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                     httpd_send(req, header2, strlen(header2));    
                 
                 }
-                char buf[8192];
+                char buf[DOWNLOAD_BUFFER_SIZE];
                 size_t l = (size_t)st.st_size;
                 itoa((int)l, buf, 10);
                 httpd_send(req, buf, strlen(buf));
