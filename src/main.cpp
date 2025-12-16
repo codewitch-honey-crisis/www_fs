@@ -41,7 +41,7 @@
 using namespace esp_idf;  // devices
 #endif
 
-enum WIFI_STATUS { WIFI_WAITING, WIFI_CONNECTED, WIFI_CONNECT_FAILED };
+typedef enum { WIFI_WAITING, WIFI_CONNECTED, WIFI_CONNECT_FAILED }  wifi_status_t;
 static constexpr const EventBits_t wifi_connected_bit = BIT0;
 static constexpr const EventBits_t wifi_fail_bit = BIT1;
 static EventGroupHandle_t wifi_event_group = NULL;
@@ -125,7 +125,7 @@ static void wifi_init(const char* ssid, const char* password) {
     ESP_ERROR_CHECK(esp_wifi_start());
 }
 
-static WIFI_STATUS wifi_status() {
+static wifi_status_t wifi_status() {
     if (wifi_event_group == nullptr) {
         return WIFI_WAITING;
     }
