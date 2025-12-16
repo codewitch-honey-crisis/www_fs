@@ -331,7 +331,6 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
 
                                 case MPM_CONTENT_PART:
                                     if (fcur != nullptr) {
-                                        puts("Write block");
                                         fwrite(recb->working, 1, size, fcur);
                                     }
                                     break;
@@ -416,15 +415,18 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                         "filename=\"";
                     httpd_send(req, headerd, strlen(headerd));
                     httpd_send(req, szfn, strlen(szfn));
+                    static const char* header2 = "\"\r\nContent-Length: ";
+                    httpd_send(req, header2, strlen(header2));    
                 } else {
                     static const char* headerv =
                         "HTTP/1.1 200 OK\r\nContent-Type: ";
                     httpd_send(req, headerv, strlen(headerv));
                     const char* ct = httpd_content_type(path);
                     httpd_send(req,ct,strlen(ct));
+                    static const char* header2 = "\r\nContent-Length: ";
+                    httpd_send(req, header2, strlen(header2));    
+                
                 }
-                static const char* header2 = "\r\nContent-Length: ";
-                httpd_send(req, header2, strlen(header2));    
                 char* buf = (char*)malloc(8192);
                 if(buf==NULL) {
                     return ESP_FAIL;
