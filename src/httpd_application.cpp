@@ -349,6 +349,40 @@ static int httpd_buffered_read(void* state) {
 done:
     return -1;
 }
+
+
+void httpd_end(void) {
+    if (httpd_handle == nullptr) {
+        return;
+    }
+    ESP_ERROR_CHECK(httpd_stop(httpd_handle));
+    httpd_handle = nullptr;
+    vSemaphoreDelete(httpd_ui_sync);
+    httpd_ui_sync = nullptr;
+}
+
+stat_t fs_stat(const char* path) {
+    stat_t s;
+    stat(path, &s);
+    return s;
+}
+
+int my_stricmp(const char* lhs, const char* rhs) {
+    int result = 0;
+    while (!result && *lhs && *rhs) {
+        result = tolower(*lhs++) - tolower(*rhs++);
+    }
+    if (!result) {
+        if (*lhs) {
+            return 1;
+        } else if (*rhs) {
+            return -1;
+        }
+        return 0;
+    }
+    return result;
+}
+
 static esp_err_t httpd_request_handler(httpd_req_t* req) {
     neopixel_color(0, 0, 255);
     // match the handler
@@ -655,36 +689,4 @@ void httpd_init(void) {
     ESP_ERROR_CHECK(httpd_register_uri_handler(httpd_handle, &handler));
     handler.method = HTTP_POST;
     ESP_ERROR_CHECK(httpd_register_uri_handler(httpd_handle, &handler));
-}
-
-void httpd_end(void) {
-    if (httpd_handle == nullptr) {
-        return;
-    }
-    ESP_ERROR_CHECK(httpd_stop(httpd_handle));
-    httpd_handle = nullptr;
-    vSemaphoreDelete(httpd_ui_sync);
-    httpd_ui_sync = nullptr;
-}
-
-stat_t fs_stat(const char* path) {
-    stat_t s;
-    stat(path, &s);
-    return s;
-}
-
-int my_stricmp(const char* lhs, const char* rhs) {
-    int result = 0;
-    while (!result && *lhs && *rhs) {
-        result = tolower(*lhs++) - tolower(*rhs++);
-    }
-    if (!result) {
-        if (*lhs) {
-            return 1;
-        } else if (*rhs) {
-            return -1;
-        }
-        return 0;
-    }
-    return result;
 }
