@@ -19,6 +19,7 @@
 #include "esp_vfs_fat.h"
 #include "esp_wifi.h"
 #include "nvs_flash.h"
+#include "hardware.h"
 #include "wifi.h"
 #include "sdcard.h"
 #include "neopixel.h"
