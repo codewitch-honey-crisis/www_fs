@@ -1,16 +1,16 @@
 
 // for testing, won't actually store the uploaded file on the FS
-// #define NO_STORE_UPLOAD
+// #define HTTPD_NO_STORE_UPLOAD
 
 // 8192 seems to yield the most performance. After that it levels off
-#ifndef UPLOAD_BUFFER_SIZE
-#define UPLOAD_BUFFER_SIZE 8192
+#ifndef HTTPD_UPLOAD_BUFFER_SIZE
+#define HTTPD_UPLOAD_BUFFER_SIZE 8192
 #endif
-#ifndef DOWNLOAD_BUFFER_SIZE
-#define DOWNLOAD_BUFFER_SIZE 8192
+#ifndef HTTPD_DOWNLOAD_BUFFER_SIZE
+#define HTTPD_DOWNLOAD_BUFFER_SIZE 8192
 #endif
-#ifndef UPLOAD_WORKING_SIZE
-#define UPLOAD_WORKING_SIZE 8192
+#ifndef HTTPD_UPLOAD_WORKING_SIZE
+#define HTTPD_UPLOAD_WORKING_SIZE 8192
 #endif
 #ifndef HTTPD_STACK_SIZE
 #define HTTPD_STACK_SIZE (32 * 1024)
@@ -19,10 +19,10 @@
 #include <sys/unistd.h>
 #include <string.h>
 #include "esp_http_server.h"
-#include "www_application.h"
+#include "httpd_application.h"
 #include "mpm_parser.h"
-#define WWW_CONTENT_IMPLEMENTATION
-#include "www_content.h"
+#define HTTPD_CONTENT_IMPLEMENTATION
+#include "httpd_content.h"
 
 char enc_rfc3986[256] = {0};
 char enc_html5[256] = {0};
@@ -293,8 +293,8 @@ typedef struct {
     size_t length;
     uint32_t start;
     int previous_percent;
-    char buffer[UPLOAD_BUFFER_SIZE];
-    char working[UPLOAD_WORKING_SIZE + 1];
+    char buffer[HTTPD_UPLOAD_BUFFER_SIZE];
+    char working[HTTPD_UPLOAD_WORKING_SIZE + 1];
     size_t buffer_size;
     size_t buffer_pos;
 } httpd_recv_buffer_t;
@@ -351,13 +351,13 @@ done:
 static esp_err_t httpd_request_handler(httpd_req_t* req) {
     neopixel_color(0,0,255);
     // match the handler
-    int handler_index = www_response_handler_match(req->uri);
+    int handler_index = httpd_response_handler_match(req->uri);
     // we keep our response context on the stack if we can
     httpd_context_t resp_arg;
     // but for async responses it must be on the heap
     httpd_context_t* resp_arg_async;
     if (req->method == HTTP_GET || req->method == HTTP_POST) {  // async is only for GET and POST
-        if (handler_index == WWW_RESPONSE_HANDLER_COUNT - 1) {  // this is our FS handler
+        if (handler_index == HTTPD_RESPONSE_HANDLER_COUNT - 1) {  // this is our FS handler
             bool is_upload = req->method != HTTP_GET;
             // get the filepath from the path and query string
             char path[513];
@@ -393,7 +393,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                         // initialize our multipart mime parser
                         mpm_context_t ctx;
                         mpm_init(mime_boundary, 0, httpd_buffered_read, recv_buf, &ctx);
-                        size_t size = UPLOAD_WORKING_SIZE;
+                        size_t size = HTTPD_UPLOAD_WORKING_SIZE;
                         mpm_node_t node;
 
                         bool disposition = false;
@@ -434,7 +434,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                                                 }
                                                 if (*szeq != '\0') {
                                                     strcat(path, szeq);
-#ifndef NO_STORE_UPLOAD
+#ifndef HTTPD_NO_STORE_UPLOAD
                                                     remove(path);  // delete if it
                                                                    // exists;
                                                     fputs("Opened ", stdout);
@@ -468,7 +468,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                                 default:  // don't care
                                     break;
                             }
-                            size = UPLOAD_WORKING_SIZE;
+                            size = HTTPD_UPLOAD_WORKING_SIZE;
                         }
                     }
                     if (recv_buf != nullptr) {
@@ -547,7 +547,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                     static const char* header2 = "\r\nContent-Length: ";
                     httpd_send(req, header2, strlen(header2));
                 }
-                char buf[DOWNLOAD_BUFFER_SIZE];
+                char buf[HTTPD_DOWNLOAD_BUFFER_SIZE];
                 size_t l = (size_t)st.st_size;
                 itoa((int)l, buf, 10);
                 httpd_send(req, buf, strlen(buf));
@@ -593,13 +593,13 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
         httpd_work_fn_t handler_fn;
         if (handler_index == -1) {
             // no match, send a 404
-            handler_fn = www_content_404_clasp;
+            handler_fn = httpd_content_404_clasp;
         } else if (handler_index == -2) {
-            handler_fn = www_content_500_clasp;
+            handler_fn = httpd_content_500_clasp;
         } else {
             // choose the handler
             handler_fn =
-                (httpd_work_fn_t)www_response_handlers[handler_index].handler;
+                (httpd_work_fn_t)httpd_response_handlers[handler_index].handler;
         }
         // and off we go.
         httpd_queue_work(req->handle, handler_fn, resp_arg_async);
@@ -613,11 +613,11 @@ synchronous:
     strncpy(resp_arg.path_and_query, req->uri, sizeof(req->uri));
     resp_arg_async = &resp_arg;
     if (handler_index == -1) {
-        www_content_404_clasp(resp_arg_async);
+        httpd_content_404_clasp(resp_arg_async);
     } else if (handler_index == -2) {
-        www_content_500_clasp(resp_arg_async);
+        httpd_content_500_clasp(resp_arg_async);
     } else {
-        www_response_handlers[handler_index].handler(resp_arg_async);
+        httpd_response_handlers[handler_index].handler(resp_arg_async);
     }
     return ESP_OK;
 error:
@@ -628,7 +628,7 @@ error:
     resp_arg.method = req->method;
     strncpy(resp_arg.path_and_query, req->uri, sizeof(req->uri));
     resp_arg_async = &resp_arg;
-    www_content_500_clasp(resp_arg_async);
+    httpd_content_500_clasp(resp_arg_async);
     return ESP_OK;
 }
 static bool httpd_match(const char* cmp, const char* uri, size_t len) {

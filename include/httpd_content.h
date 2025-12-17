@@ -1,58 +1,58 @@
 // Generated with clasptree
-// To use this file, define WWW_CONTENT_IMPLEMENTATION in exactly one translation unit (.c/.cpp file) before including this header.
-#ifndef WWW_CONTENT_H
-#define WWW_CONTENT_H
+// To use this file, define HTTPD_CONTENT_IMPLEMENTATION in exactly one translation unit (.c/.cpp file) before including this header.
+#ifndef HTTPD_CONTENT_H
+#define HTTPD_CONTENT_H
 
 #include <stdint.h>
 #include <stddef.h>
 
-#define WWW_RESPONSE_HANDLER_COUNT 6
-typedef struct { const char* path; const char* path_encoded; void (* handler) (void* arg); } www_response_handler_t;
-extern www_response_handler_t www_response_handlers[WWW_RESPONSE_HANDLER_COUNT];
+#define HTTPD_RESPONSE_HANDLER_COUNT 6
+typedef struct { const char* path; const char* path_encoded; void (* handler) (void* arg); } httpd_response_handler_t;
+extern httpd_response_handler_t httpd_response_handlers[HTTPD_RESPONSE_HANDLER_COUNT];
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // ..404.clasp
-void www_content_404_clasp(void* resp_arg);
+void httpd_content_404_clasp(void* resp_arg);
 // ..500.clasp
-void www_content_500_clasp(void* resp_arg);
+void httpd_content_500_clasp(void* resp_arg);
 // ..fs.clasp
-void www_content_fs_clasp(void* resp_arg);
+void httpd_content_fs_clasp(void* resp_arg);
 // .index.clasp
-void www_content_index_clasp(void* resp_arg);
+void httpd_content_index_clasp(void* resp_arg);
 // .images/404.jpg
-void www_content_images_404_jpg(void* resp_arg);
+void httpd_content_images_404_jpg(void* resp_arg);
 // .images/500.jpg
-void www_content_images_500_jpg(void* resp_arg);
+void httpd_content_images_500_jpg(void* resp_arg);
 // .images/download.png
-void www_content_images_download_png(void* resp_arg);
+void httpd_content_images_download_png(void* resp_arg);
 /// @brief Matches a path to one of the response handler entries
 /// @param path_and_query The path to match which can include the query string (ignored)
 /// @return The index of the response handler entry, or -1 if no match
-int www_response_handler_match(const char* path_and_query);
+int httpd_response_handler_match(const char* path_and_query);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // WWW_CONTENT_H
+#endif // HTTPD_CONTENT_H
 
-#ifdef WWW_CONTENT_IMPLEMENTATION
+#ifdef HTTPD_CONTENT_IMPLEMENTATION
 
-#include "www_application.h"
+#include "httpd_application.h"
 
-www_response_handler_t www_response_handlers[6] = {
-    { "/", "/", www_content_index_clasp },
-    { "/images/404.jpg", "/images/404.jpg", www_content_images_404_jpg },
-    { "/images/500.jpg", "/images/500.jpg", www_content_images_500_jpg },
-    { "/images/download.png", "/images/download.png", www_content_images_download_png },
-    { "/index.clasp", "/index.clasp", www_content_index_clasp },
-    { "", "", www_content_fs_clasp }
+httpd_response_handler_t httpd_response_handlers[6] = {
+    { "/", "/", httpd_content_index_clasp },
+    { "/images/404.jpg", "/images/404.jpg", httpd_content_images_404_jpg },
+    { "/images/500.jpg", "/images/500.jpg", httpd_content_images_500_jpg },
+    { "/images/download.png", "/images/download.png", httpd_content_images_download_png },
+    { "/index.clasp", "/index.clasp", httpd_content_index_clasp },
+    { "", "", httpd_content_fs_clasp }
 };
 
 // matches a path to a response handler index
-int www_response_handler_match(const char* path_and_query) {
+int httpd_response_handler_match(const char* path_and_query) {
     static const int16_t fsm_data[] = {
         -1, 1, 6, 1, 47, 47, 0, 2, 16, 1, 105, 105, 270, 1, 115, 115, -1, 2, 26, 1, 
         109, 109, 214, 1, 110, 110, -1, 1, 32, 1, 97, 97, -1, 1, 38, 1, 103, 103, -1, 1, 
@@ -129,7 +129,7 @@ int www_response_handler_match(const char* path_and_query) {
     return -1;
     
 }
-void www_content_404_clasp(void* resp_arg) {
+void httpd_content_404_clasp(void* resp_arg) {
     // HTTP/1.1 404 Not found
     // Content-Type: text/html
     // Content-Encoding: deflate
@@ -159,7 +159,7 @@ void www_content_404_clasp(void* resp_arg) {
     
 
 }
-void www_content_500_clasp(void* resp_arg) {
+void httpd_content_500_clasp(void* resp_arg) {
     // HTTP/1.1 500 Internal server error
     // Content-Type: text/html
     // Content-Encoding: deflate
@@ -190,7 +190,7 @@ void www_content_500_clasp(void* resp_arg) {
     
 
 }
-void www_content_fs_clasp(void* resp_arg) {
+void httpd_content_fs_clasp(void* resp_arg) {
      httpd_send_block ("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nTransfer-Encoding: ch"
         "unked\r\n\r\n16\r\n<!DOCTYPE html>\n<html>\r\n", 100,  resp_arg);
     
@@ -273,7 +273,7 @@ void www_content_fs_clasp(void* resp_arg) {
     
 
 }
-void www_content_index_clasp(void* resp_arg) {
+void httpd_content_index_clasp(void* resp_arg) {
      httpd_send_block ("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nTransfer-Encoding: ch"
         "unked\r\n\r\n167\r\n<!DOCTYPE html>\n<html>\n    <head>\n        <meta name=\"viewport\" co"
         "ntent=\"width=device-width, initial-scale=1.0\" />\n        <title>Browsing filesys"
@@ -292,7 +292,7 @@ void www_content_index_clasp(void* resp_arg) {
     
 
 }
-void www_content_images_404_jpg(void* resp_arg) {
+void httpd_content_images_404_jpg(void* resp_arg) {
     // HTTP/1.1 200  OK
     // Content-Type: image/jpeg
     // Content-Encoding: deflate
@@ -5896,7 +5896,7 @@ void www_content_images_404_jpg(void* resp_arg) {
     
 
 }
-void www_content_images_500_jpg(void* resp_arg) {
+void httpd_content_images_500_jpg(void* resp_arg) {
     // HTTP/1.1 200  OK
     // Content-Type: image/jpeg
     // Content-Encoding: deflate
@@ -10583,7 +10583,7 @@ void www_content_images_500_jpg(void* resp_arg) {
     
 
 }
-void www_content_images_download_png(void* resp_arg) {
+void httpd_content_images_download_png(void* resp_arg) {
     // HTTP/1.1 200  OK
     // Content-Type: image/png
     // Content-Encoding: deflate
@@ -10610,5 +10610,5 @@ void www_content_images_download_png(void* resp_arg) {
     
 
 }
-#endif // WWW_CONTENT_IMPLEMENTATION
+#endif // HTTPD_CONTENT_IMPLEMENTATION
 
