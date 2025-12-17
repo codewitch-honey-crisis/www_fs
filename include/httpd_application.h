@@ -83,7 +83,10 @@ const char* httpd_crack_query(const char* next_query_part,
 /// @return The MIME type
 const char* httpd_content_type(const char* path);
 
+/// @brief Start the httpd service
 void httpd_init(void);
+
+/// @brief Stop the httpd service
 void httpd_end(void);
 
 typedef struct stat stat_t;
