@@ -6,7 +6,7 @@
 #include <dirent.h>
 #include <time.h>
 #include "hardware.h"
-#include "sd_protocol_types.h"  
+#include "sdcard.h"
 #include "neopixel.h"
 
 // used by the page handlers
@@ -82,6 +82,9 @@ const char* httpd_crack_query(const char* next_query_part,
 /// @param path The path to check
 /// @return The MIME type
 const char* httpd_content_type(const char* path);
+
+void httpd_init(void);
+void httpd_end(void);
 
 typedef struct stat stat_t;
 /// @brief Gets the stat for a path
