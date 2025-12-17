@@ -566,17 +566,17 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                 if (downloading) {
                     fputs("Downloading ", stdout);
                     puts(path);
-                    static const char* headerd =
+                    static const char* header1 =
                         "HTTP/1.1 200 OK\r\nContent-Disposition: attachment; "
                         "filename=\"";
-                    httpd_send(req, headerd, strlen(headerd));
+                    httpd_send(req, header1, strlen(header1));
                     httpd_send(req, szfn, strlen(szfn));
                     static const char* header2 = "\"\r\nContent-Length: ";
                     httpd_send(req, header2, strlen(header2));
                 } else {
-                    static const char* headerv =
+                    static const char* header1 =
                         "HTTP/1.1 200 OK\r\nContent-Type: ";
-                    httpd_send(req, headerv, strlen(headerv));
+                    httpd_send(req, header1, strlen(header1));
                     const char* ct = httpd_content_type(path);
                     httpd_send(req, ct, strlen(ct));
                     static const char* header2 = "\r\nContent-Length: ";
