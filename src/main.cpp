@@ -120,6 +120,24 @@ extern "C" void app_main() {
         puts("Create wifi.txt with the SSID on the first line, and password on the second line and upload it to SPIFFS");
     }
 }
+static void print_ip(uint32_t ip) {
+    char buf[4];
+    uint8_t octet = ip & 0xFF;
+    itoa(octet,buf,10);
+    fputs(buf,stdout);
+    fputs(".",stdout);
+    octet = (ip >> 8) & 0xFF;
+    itoa(octet,buf,10);
+    fputs(buf,stdout);
+    fputs(".",stdout);
+    octet = (ip >> 16) & 0xFF;
+    itoa(octet,buf,10);
+    fputs(buf,stdout);
+    fputs(".",stdout);
+    octet = ip >> 24;
+    itoa(octet,buf,10);
+    fputs(buf,stdout);
+}
 static void loop() {
     static bool is_connected = false;
     if (!is_connected) {  // not connected yet
@@ -130,13 +148,11 @@ static void loop() {
             puts("Starting httpd");
             httpd_init();
             // set the url text to our website
-            static char url_text[256];
+            //static char url_text[256];
             uint32_t ip = wifi_ip_address();
-            esp_ip4_addr addy;
-            addy.addr = ip;
-            snprintf(url_text, sizeof(url_text), "http://" IPSTR,
-                     IP2STR(&addy));
-            puts(url_text);
+            fputs("http://",stdout);
+            print_ip(ip);
+            putchar('\n');
             uint32_t free_sram = esp_get_free_internal_heap_size();
             printf("Free SRAM: %0.2fKB\n",
                    free_sram / 1024.f);
