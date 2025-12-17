@@ -1,4 +1,3 @@
-
 // for testing, won't actually store the uploaded file on the FS
 // #define HTTPD_NO_STORE_UPLOAD
 
@@ -15,11 +14,13 @@
 #ifndef HTTPD_STACK_SIZE
 #define HTTPD_STACK_SIZE (32 * 1024)
 #endif
+#include "httpd_application.h"
+
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/unistd.h>
-#include <string.h>
+
 #include "esp_http_server.h"
-#include "httpd_application.h"
 #include "mpm_parser.h"
 #define HTTPD_CONTENT_IMPLEMENTATION
 #include "httpd_content.h"
@@ -86,15 +87,14 @@ static httpd_content_entry httpd_content_types[] = {
     {".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"},
     {".xml", "application/xml"},
     {".zip", "application/zip"},
-    {".7z", "application/x-7z-compressed"}
-};
+    {".7z", "application/x-7z-compressed"}};
 static const size_t httpd_content_types_size = 54;
 const char* httpd_content_type(const char* path) {
-    const char* ext = strrchr(path,'.');
-    if(ext!=NULL) {
+    const char* ext = strrchr(path, '.');
+    if (ext != NULL) {
         // could optimize with a binary search or DFA
-        for(size_t i = 0;i<httpd_content_types_size;++i) {
-            if(0==my_stricmp(httpd_content_types[i].ext,ext)) {
+        for (size_t i = 0; i < httpd_content_types_size; ++i) {
+            if (0 == my_stricmp(httpd_content_types[i].ext, ext)) {
                 return httpd_content_types[i].ctype;
             }
         }
@@ -102,7 +102,7 @@ const char* httpd_content_type(const char* path) {
     return "application/octet-stream";
 }
 char* httpd_url_encode(char* enc, size_t size, const char* s,
-                              const char* table) {
+                       const char* table) {
     char* result = enc;
     if (table == NULL) table = enc_rfc3986;
     for (; *s; s++) {
@@ -156,8 +156,8 @@ char* httpd_url_decode(char* dst, size_t dstlen, const char* src) {
 }
 
 const char* httpd_crack_query(const char* next_query_part,
-                                     char* out_name, size_t name_size,
-                                     char* out_value, size_t value_size) {
+                              char* out_name, size_t name_size,
+                              char* out_value, size_t value_size) {
     if (!*next_query_part) return NULL;
 
     const char start = *next_query_part;
@@ -226,14 +226,14 @@ void httpd_init_encoding(void) {
     }
 }
 void httpd_send_chunked(const char* buffer, size_t buffer_len,
-                               void* arg) {
+                        void* arg) {
     char buf[64];
     if (buffer && buffer_len) {
         itoa(buffer_len, buf, 16);
         strcat(buf, "\r\n");
-        httpd_send_block(buf,strlen(buf),arg);
-        httpd_send_block(buffer,buffer_len,arg);
-        httpd_send_block("\r\n",2,arg);
+        httpd_send_block(buf, strlen(buf), arg);
+        httpd_send_block(buffer, buffer_len, arg);
+        httpd_send_block("\r\n", 2, arg);
         return;
     }
     httpd_send_block("0\r\n\r\n", 5, arg);
@@ -281,7 +281,6 @@ void httpd_send_expr(const char* expr, void* arg) {
 //     sprintf(buf, "%02d", (int)expr);
 //     httpd_send_chunked(buf, strlen(buf), arg);
 // }
-
 
 static httpd_handle_t httpd_handle = nullptr;
 static SemaphoreHandle_t httpd_ui_sync = nullptr;
@@ -349,14 +348,14 @@ done:
     return -1;
 }
 static esp_err_t httpd_request_handler(httpd_req_t* req) {
-    neopixel_color(0,0,255);
+    neopixel_color(0, 0, 255);
     // match the handler
     int handler_index = httpd_response_handler_match(req->uri);
     // we keep our response context on the stack if we can
     httpd_context_t resp_arg;
     // but for async responses it must be on the heap
     httpd_context_t* resp_arg_async;
-    if (req->method == HTTP_GET || req->method == HTTP_POST) {  // async is only for GET and POST
+    if (req->method == HTTP_GET || req->method == HTTP_POST) {    // async is only for GET and POST
         if (handler_index == HTTPD_RESPONSE_HANDLER_COUNT - 1) {  // this is our FS handler
             bool is_upload = req->method != HTTP_GET;
             // get the filepath from the path and query string
@@ -367,7 +366,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
             httpd_url_decode(path, path_len, req->uri);
             path[path_len] = '\0';
             if (is_upload) {
-                neopixel_color(255,0,0);
+                neopixel_color(255, 0, 0);
                 char content_type[256];
                 FILE* file_cursor = NULL;
                 httpd_req_get_hdr_value_str(req, "Content-Type", content_type,
@@ -498,7 +497,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                             *sze = '\0';
                         }
                         strcat(path, sz);
-                        neopixel_color(0,0,0);
+                        neopixel_color(0, 0, 0);
                         fputs("Deleting ", stdout);
                         puts(path);
                         remove(path);
@@ -563,7 +562,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                     l = fread(buf, 1, sizeof(buf), file);
                 }
                 fclose(file);
-                neopixel_color(0,0,0);
+                neopixel_color(0, 0, 0);
                 return ESP_OK;
             } else {
                 DIR* d = opendir(path);
@@ -687,4 +686,3 @@ int my_stricmp(const char* lhs, const char* rhs) {
     }
     return result;
 }
-
