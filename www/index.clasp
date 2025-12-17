@@ -9,13 +9,9 @@
         <table style="border: 0; padding: 10px 10px 10px 10px;">
             <tr><td>Mount Point<td></tr>
             <tr><td><a href="./spiffs/">/spiffs/</a></td></tr>
-        <%
-#if defined(SD_CS) || defined(SDMMC_D0)
-            if(sdcard_init()) {%>
+        <%if(sdcard_init()) {%>
             <tr><td><a href="./sdcard/">/sdcard/</a></tr>
-        <%}
-#endif
-            %>
+        <%}%>
         </table>
     </body>
 </html>

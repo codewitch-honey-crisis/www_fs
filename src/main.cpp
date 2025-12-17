@@ -27,12 +27,9 @@
 #include "esp_vfs_fat.h"
 #include "esp_wifi.h"
 #include "nvs_flash.h"
-#ifdef NEOPIXEL_DOUT
-#include "led_strip.h"
-#include "led_strip_rmt.h"
-#endif
 #include "sdcard.h"
 #include "wifi.h"
+#include "neopixel.h"
 #include "mpm_parser.h"
 #define WWW_CONTENT_IMPLEMENTATION
 #include "www_content.h"
@@ -110,10 +107,7 @@ done:
     return -1;
 }
 static esp_err_t httpd_request_handler(httpd_req_t* req) {
-#ifdef NEOPIXEL_DOUT
-    led_strip_set_pixel(neopixel_handle, 0, 0, 0, 255);
-    led_strip_refresh(neopixel_handle);
-#endif
+    neopixel_color(0,0,255);
     // match the handler
     int handler_index = www_response_handler_match(req->uri);
     // we keep our response context on the stack if we can
@@ -131,72 +125,69 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
             httpd_url_decode(path, path_len, req->uri);
             path[path_len] = '\0';
             if (is_upload) {
-#ifdef NEOPIXEL_DOUT
-                led_strip_set_pixel(neopixel_handle, 0, 255, 0, 0);
-                led_strip_refresh(neopixel_handle);
-#endif
-                char ctype[256];
-                FILE* fcur = NULL;
-                httpd_req_get_hdr_value_str(req, "Content-Type", ctype,
-                                            sizeof(ctype));
-                char* be = strstr(ctype, "boundary=");
+                neopixel_color(255,0,0);
+                char content_type[256];
+                FILE* file_cursor = NULL;
+                httpd_req_get_hdr_value_str(req, "Content-Type", content_type,
+                                            sizeof(content_type));
+                char* mime_boundary = strstr(content_type, "boundary=");
                 // this is multipart MIME upload
-                if (be != nullptr) {
-                    be += 9;
-                    while (*be == ' ') {
-                        ++be;
+                if (mime_boundary != nullptr) {
+                    mime_boundary += 9;
+                    while (*mime_boundary == ' ') {
+                        ++mime_boundary;
                     }
                     // not enough stack for this:
-                    httpd_recv_buffer_t* recb = (httpd_recv_buffer_t*)malloc(
+                    httpd_recv_buffer_t* recv_buf = (httpd_recv_buffer_t*)malloc(
                         sizeof(httpd_recv_buffer_t));
-                    if (recb == nullptr) {
+                    if (recv_buf == nullptr) {
                         goto error;  // out of memory;
                     }
-                    memset(recb, 0, sizeof(httpd_recv_buffer_t));
-                    recb->req = req;
-                    recb->remaining = recb->length = req->content_len;
-                    recb->start = pdTICKS_TO_MS(xTaskGetTickCount());
-                    if (recb->remaining > 0) {
+                    memset(recv_buf, 0, sizeof(httpd_recv_buffer_t));
+                    recv_buf->req = req;
+                    recv_buf->remaining = recv_buf->length = req->content_len;
+                    recv_buf->start = pdTICKS_TO_MS(xTaskGetTickCount());
+                    if (recv_buf->remaining > 0) {
                         // initialize our multipart mime parser
                         mpm_context_t ctx;
-                        mpm_init(be, 0, httpd_buffered_read, recb, &ctx);
+                        mpm_init(mime_boundary, 0, httpd_buffered_read, recv_buf, &ctx);
                         size_t size = UPLOAD_WORKING_SIZE;
                         mpm_node_t node;
 
                         bool disposition = false;
                         // parse the MIME data
-                        while ((node = mpm_parse(&ctx, recb->working, &size)) >
+                        while ((node = mpm_parse(&ctx, recv_buf->working, &size)) >
                                0) {
                             switch (node) {
                                 case MPM_HEADER_NAME_PART:
-                                    recb->working[size] = '\0';
+                                    recv_buf->working[size] = '\0';
                                     disposition =
-                                        0 == my_stricmp(recb->working,
+                                        0 == my_stricmp(recv_buf->working,
                                                         "Content-Disposition");
                                     break;
                                 case MPM_HEADER_VALUE_PART:
                                     if (disposition) {
-                                        const char* sz = recb->working;
-                                        recb->working[size] = 0;
+                                        const char* sz = recv_buf->working;
+                                        recv_buf->working[size] = 0;
                                         const char* szeq = strchr(sz, '=');
                                         if (szeq != nullptr) {
-                                            recb->working[szeq - sz] = '\0';
+                                            recv_buf->working[szeq - sz] = '\0';
                                             ++szeq;
                                             if (0 ==
                                                 my_stricmp(sz, "filename")) {
                                                 if (*szeq == '\"') {
                                                     ++szeq;
                                                     if (*szeq) {
-                                                        recb->working
+                                                        recv_buf->working
                                                             [(szeq -
-                                                              recb->working) +
+                                                              recv_buf->working) +
                                                              strlen(szeq) - 1] =
                                                             '\0';
                                                     }
                                                 } else {
-                                                    recb->working
+                                                    recv_buf->working
                                                         [(szeq -
-                                                          recb->working) +
+                                                          recv_buf->working) +
                                                          strlen(szeq)] = '\0';
                                                 }
                                                 if (*szeq != '\0') {
@@ -206,12 +197,12 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                                                                    // exists;
                                                     fputs("Opened ", stdout);
                                                     puts(path);
-                                                    fcur = fopen(path, "wb");
+                                                    file_cursor = fopen(path, "wb");
 #else
-                                                    fcur = nullptr;
+                                                    file_cursor = nullptr;
 #endif
                                                 } else {
-                                                    fcur = nullptr;
+                                                    file_cursor = nullptr;
                                                 }
                                             }
                                         }
@@ -220,15 +211,15 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
 
                                 case MPM_CONTENT_PART:
                                     disposition = false;
-                                    if (fcur != nullptr) {
-                                        fwrite(recb->working, 1, size, fcur);
+                                    if (file_cursor != nullptr) {
+                                        fwrite(recv_buf->working, 1, size, file_cursor);
                                     }
                                     break;
                                 case MPM_CONTENT_END:
                                     disposition = false;
-                                    if (fcur != NULL) {
-                                        fclose(fcur);
-                                        fcur = NULL;
+                                    if (file_cursor != NULL) {
+                                        fclose(file_cursor);
+                                        file_cursor = NULL;
                                     }
                                     path[path_len] = '\0';
                                     break;
@@ -238,15 +229,15 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                             size = UPLOAD_WORKING_SIZE;
                         }
                     }
-                    if (recb != nullptr) {
+                    if (recv_buf != nullptr) {
                         char buf[32];
                         fputs("Uploading complete in ", stdout);
-                        int num = (((float)pdTICKS_TO_MS(xTaskGetTickCount()) - (float)recb->start) / 1000.f + .5);
+                        int num = (((float)pdTICKS_TO_MS(xTaskGetTickCount()) - (float)recv_buf->start) / 1000.f + .5);
                         itoa(num, buf, 10);
                         fputs(buf, stdout);
                         puts(" seconds");
-                        free(recb);
-                        recb = nullptr;
+                        free(recv_buf);
+                        recv_buf = nullptr;
                     }
                 } else {  // standard form post, probably delete
                     char* data = (char*)malloc(req->content_len + 1);
@@ -265,10 +256,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                             *sze = '\0';
                         }
                         strcat(path, sz);
-#ifdef NEOPIXEL_DOUT
-                        led_strip_set_pixel(neopixel_handle, 0, 255, 0, 0);
-                        led_strip_refresh(neopixel_handle);
-#endif
+                        neopixel_color(0,0,0);
                         fputs("Deleting ", stdout);
                         puts(path);
                         remove(path);
@@ -333,10 +321,7 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                     l = fread(buf, 1, sizeof(buf), file);
                 }
                 fclose(file);
-#ifdef NEOPIXEL_DOUT
-                led_strip_clear(neopixel_handle);
-                led_strip_refresh(neopixel_handle);
-#endif
+                neopixel_color(0,0,0);
                 return ESP_OK;
             } else {
                 DIR* d = opendir(path);
@@ -466,22 +451,6 @@ static void spi_init() {
 }
 #endif
 
-#ifdef NEOPIXEL_DOUT
-led_strip_handle_t neopixel_handle = NULL;
-static void neopixel_init() {
-    led_strip_config_t led_cfg;
-    memset(&led_cfg, 0, sizeof(led_cfg));
-    led_cfg.color_component_format = NEOPIXEL_FORMAT;
-    led_cfg.led_model = NEOPIXEL_TYPE;
-    led_cfg.max_leds = 1;
-    led_cfg.strip_gpio_num = (gpio_num_t)NEOPIXEL_DOUT;
-    led_strip_rmt_config_t led_rmt_cfg;
-    memset(&led_rmt_cfg, 0, sizeof(led_rmt_cfg));
-    ESP_ERROR_CHECK(led_strip_new_rmt_device(&led_cfg, &led_rmt_cfg, &neopixel_handle));
-}
-
-#endif
-
 static void spiffs_init() {
     esp_vfs_spiffs_conf_t conf;
     memset(&conf, 0, sizeof(conf));
@@ -514,11 +483,7 @@ extern "C" void app_main() {
 #ifdef M5STACK_CORE2
     power_init();  // do this first
 #endif
-#ifdef NEOPIXEL_DOUT
     neopixel_init();
-    ESP_ERROR_CHECK(led_strip_clear(neopixel_handle));
-    ESP_ERROR_CHECK(led_strip_refresh(neopixel_handle));
-#endif
 #ifdef SPI_PORT
     spi_init();  // used by the SD reader
 #endif
@@ -528,12 +493,10 @@ extern "C" void app_main() {
 
     wifi_pass[0] = 0;
 
-#if defined(SD_CS) || defined(SDMMC_D0)
     if (sdcard_init()) {
         puts("SD card found, looking for wifi.txt creds");
         loaded = wifi_load("/sdcard/wifi.txt", wifi_ssid, wifi_pass);
     }
-#endif
     if (!loaded) {
         spiffs_init();
         puts("Looking for wifi.txt creds on internal flash");

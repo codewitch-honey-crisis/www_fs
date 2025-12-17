@@ -7,9 +7,7 @@
 #include <time.h>
 #include "hardware.h"
 #include "sd_protocol_types.h"  
-#ifdef NEOPIXEL
-#include "led_strip.h"
-#endif
+#include "neopixel.h"
 
 // used by the page handlers
 typedef struct {
@@ -21,12 +19,6 @@ typedef struct {
 
 extern char enc_rfc3986[256];
 extern char enc_html5[256];
-#ifdef NEOPIXEL
-extern led_strip_handle_t neopixel_handle;
-#endif
-#if defined(SD_CS) || defined(SDMMC_D0)
-extern sdmmc_card_t* sd_card;
-#endif
 
 // not all compiler vendors implement stricmp
 int my_stricmp(const char* lhs, const char* rhs);

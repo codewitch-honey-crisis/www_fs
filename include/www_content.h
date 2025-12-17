@@ -153,13 +153,7 @@ void www_content_404_clasp(void* resp_arg) {
         0x38, 0x67, 0x83, 0x75, 0xe5, 0xd9, 0x59, 0x08, 0xd5, 0xe4, 0x84, 0xcd, 0xa7, 0x53, 0x32, 0xad, 0xd8, 0xe4, 0x1a, 0x4e, 
         0xc9, 0x46, 0x5e, 0x59, 0xfe, 0x2e, 0xfb, 0x0b };
      httpd_send_block((const char*)http_response_data,sizeof(http_response_data),  resp_arg);
-       #ifdef NEOPIXEL
-    
-    led_strip_clear(neopixel_handle);
-    
-    led_strip_refresh(neopixel_handle);
-    
-    #endif
+       neopixel_color(0,0,0);
     
     if(((httpd_context_t*)resp_arg)->fd>-1) free(resp_arg);
     
@@ -190,13 +184,7 @@ void www_content_500_clasp(void* resp_arg) {
         0x44, 0x84, 0x0e, 0x66, 0xca, 0x16, 0x4b, 0xf1, 0x69, 0x04, 0x9e, 0x10, 0x08, 0x8f, 0x27, 0x2c, 0xdc, 0x29, 0x39, 0x6f, 
         0x7c, 0xe5, 0x56, 0x58, 0xc9, 0x36, 0x4d, 0x75, 0xba, 0xfc, 0xfc, 0x2f };
      httpd_send_block((const char*)http_response_data,sizeof(http_response_data),  resp_arg);
-       #ifdef NEOPIXEL
-    
-    led_strip_clear(neopixel_handle);
-    
-    led_strip_refresh(neopixel_handle);
-    
-    #endif
+       neopixel_color(0,0,0);
     
     if(((httpd_context_t*)resp_arg)->fd>-1) free(resp_arg);
     
@@ -279,13 +267,7 @@ void www_content_fs_clasp(void* resp_arg) {
         closedir(dir);
     
      httpd_send_block("0\r\n\r\n", 5,  resp_arg);
-       #ifdef NEOPIXEL
-    
-    led_strip_clear(neopixel_handle);
-    
-    led_strip_refresh(neopixel_handle);
-    
-    #endif
+       neopixel_color(0,0,0);
     
     if(((httpd_context_t*)resp_arg)->fd>-1) free(resp_arg);
     
@@ -298,23 +280,13 @@ void www_content_index_clasp(void* resp_arg) {
         "tems</title>\n    </head>\n    <body>\n        <table style=\"border: 0; padding: 10"
         "px 10px 10px 10px;\">\n            <tr><td>Mount Point<td></tr>\n            <tr><t"
         "d><a href=\"./spiffs/\">/spiffs/</a></td></tr>\n        \r\n", 438,  resp_arg);
-    
-    #if defined(SD_CS) || defined(SDMMC_D0)
-                if(sdcard_init()) {
+    if(sdcard_init()) {
      httpd_send_block("43\r\n\n            <tr><td><a href=\"./sdcard/\">/sdcard/</a></tr>"
         "\n        \r\n", 73,  resp_arg);
     }
-    #endif
-                
      httpd_send_block("25\r\n\n        </table>\n    </body>\n</html>\r\n", 43,  resp_arg);
      httpd_send_block("0\r\n\r\n", 5,  resp_arg);
-       #ifdef NEOPIXEL
-    
-    led_strip_clear(neopixel_handle);
-    
-    led_strip_refresh(neopixel_handle);
-    
-    #endif
+       neopixel_color(0,0,0);
     
     if(((httpd_context_t*)resp_arg)->fd>-1) free(resp_arg);
     
@@ -5918,13 +5890,7 @@ void www_content_images_404_jpg(void* resp_arg) {
         0xaf, 0xba, 0x43, 0x7c, 0xee, 0x9f, 0x0f, 0xde, 0x46, 0x90, 0xb3, 0xf8, 0x6b, 0xad, 0xe5, 0xc5, 0x60, 0x1e, 0x06, 0x03, 
         0x78, 0xab, 0x24, 0x62, 0x64, 0x80, 0x37, 0xb3, 0xff, 0x07 };
      httpd_send_block((const char*)http_response_data,sizeof(http_response_data),  resp_arg);
-       #ifdef NEOPIXEL
-    
-    led_strip_clear(neopixel_handle);
-    
-    led_strip_refresh(neopixel_handle);
-    
-    #endif
+       neopixel_color(0,0,0);
     
     if(((httpd_context_t*)resp_arg)->fd>-1) free(resp_arg);
     
@@ -10611,13 +10577,7 @@ void www_content_images_500_jpg(void* resp_arg) {
         0x93, 0x72, 0x77, 0xb9, 0xe7, 0x5e, 0x0e, 0x6c, 0x33, 0xf9, 0x4c, 0x18, 0x9d, 0x63, 0xee, 0xa4, 0xd4, 0x33, 0xb1, 0x71, 
         0xbf, 0xfa, 0xf2, 0x2e, 0x5d, 0xa7, 0xc7, 0xd4, 0x89, 0xff, 0x03 };
      httpd_send_block((const char*)http_response_data,sizeof(http_response_data),  resp_arg);
-       #ifdef NEOPIXEL
-    
-    led_strip_clear(neopixel_handle);
-    
-    led_strip_refresh(neopixel_handle);
-    
-    #endif
+       neopixel_color(0,0,0);
     
     if(((httpd_context_t*)resp_arg)->fd>-1) free(resp_arg);
     
@@ -10644,13 +10604,7 @@ void www_content_images_download_png(void* resp_arg) {
         0x62, 0x60, 0xd0, 0x77, 0xcc, 0x7b, 0xbf, 0x49, 0x61, 0xf6, 0x7b, 0xa0, 0xc9, 0x0c, 0x9e, 0xae, 0x7e, 0x2e, 0xeb, 0x9c, 
         0x12, 0x9a, 0x00 };
      httpd_send_block((const char*)http_response_data,sizeof(http_response_data),  resp_arg);
-       #ifdef NEOPIXEL
-    
-    led_strip_clear(neopixel_handle);
-    
-    led_strip_refresh(neopixel_handle);
-    
-    #endif
+       neopixel_color(0,0,0);
     
     if(((httpd_context_t*)resp_arg)->fd>-1) free(resp_arg);
     
