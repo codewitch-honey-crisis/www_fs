@@ -147,8 +147,6 @@ static void loop() {
             // initialize the web server
             puts("Starting httpd");
             httpd_init();
-            // set the url text to our website
-            //static char url_text[256];
             uint32_t ip = wifi_ip_address();
             fputs("http://",stdout);
             print_ip(ip);
