@@ -87,7 +87,9 @@ static httpd_content_entry httpd_content_types[] = {
     {".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"},
     {".xml", "application/xml"},
     {".zip", "application/zip"},
-    {".7z", "application/x-7z-compressed"}};
+    {".7z", "application/x-7z-compressed"}
+};
+
 static const size_t httpd_content_types_size = 54;
 const char* httpd_content_type(const char* path) {
     const char* ext = strrchr(path, '.');
