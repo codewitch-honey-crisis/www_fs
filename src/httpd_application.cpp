@@ -25,8 +25,8 @@
 #define HTTPD_CONTENT_IMPLEMENTATION
 #include "httpd_content.h"
 
-char enc_rfc3986[256] = {0};
-char enc_html5[256] = {0};
+char httpd_enc_rfc3986[256] = {0};
+char httpd_enc_html5[256] = {0};
 
 typedef struct {
     const char* ext;
@@ -106,7 +106,7 @@ const char* httpd_content_type(const char* path) {
 char* httpd_url_encode(char* enc, size_t size, const char* s,
                        const char* table) {
     char* result = enc;
-    if (table == NULL) table = enc_rfc3986;
+    if (table == NULL) table = httpd_enc_rfc3986;
     for (; *s; s++) {
         if (table[(int)*s]) {
             *enc++ = table[(int)*s];
@@ -219,9 +219,9 @@ void httpd_send_block(const char* data, size_t len, void* arg) {
 }
 void httpd_init_encoding(void) {
     for (int i = 0; i < 256; i++) {
-        enc_rfc3986[i] =
+        httpd_enc_rfc3986[i] =
             isalnum(i) || i == '~' || i == '-' || i == '.' || i == '_' ? i : 0;
-        enc_html5[i] =
+        httpd_enc_html5[i] =
             isalnum(i) || i == '*' || i == '-' || i == '.' || i == '_' ? i
             : (i == ' ')                                               ? '+'
                                                                        : 0;

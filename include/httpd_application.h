@@ -17,8 +17,8 @@ typedef struct {
     int fd;
 } httpd_context_t;
 
-extern char enc_rfc3986[256];
-extern char enc_html5[256];
+extern char httpd_enc_rfc3986[256];
+extern char httpd_enc_html5[256];
 
 // not all compiler vendors implement stricmp
 int my_stricmp(const char* lhs, const char* rhs);
@@ -58,7 +58,7 @@ void httpd_send_expr(const char* expr, void* arg);
 /// @param enc The encoded output buffer
 /// @param size The size of the out buffer
 /// @param s The string to encode
-/// @param table The table to use (enc_rfc3986 or enc_html5)
+/// @param table The table to use (httpd_enc_rfc3986 or httpd_enc_html5)
 /// @return The encoded output buffer
 char *httpd_url_encode(char *enc, size_t size, const char *s, const char *table);
 /// @brief Decodes an URL encoded string
