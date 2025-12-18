@@ -33,11 +33,13 @@
             <table>
                 <tr class="table-header">
                     <td>&nbsp;</td>
+                    <td>&nbsp;</td>
                     <td>Name</td>
                     <td>Size</td>
                     <td>Last Modified</td>
                 </tr>
                 <tr>
+                    <td>&nbsp;</td>
                     <td>&nbsp;</td>
                     <td><a href=".">.</a></td>
                     <td>&nbsp;</td>
@@ -45,6 +47,7 @@
                 </tr>
                 <%if(!(path[0]=='/' && path[1]=='\0')){%>
                 <tr>
+                    <td>&nbsp;</td>
                     <td>&nbsp;</td>
                     <td><a href="..">..</a></td>
                     <td>&nbsp;</td>

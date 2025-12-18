@@ -226,20 +226,22 @@ void httpd_content_fs_clasp(void* resp_arg) {
      httpd_send_block("6e\r\n</title>\n    </head>\n    <body>\n        <div class=\"contai"
         "ner\">\n            <div class=\"page-header\">Browsing \r\n", 116,  resp_arg);
      httpd_send_expr(path,  resp_arg);
-     httpd_send_block("2e3\r\n</div>\n            <div class=\"upload-section\">\n         "
+     httpd_send_block("32b\r\n</div>\n            <div class=\"upload-section\">\n         "
         "       <form action=\".\" method=\"post\" enctype=\"multipart/form-data\">\n           "
         "         <input type=\"file\" name=\"file\"/>\n                    <button type=\"subm"
         "it\" name=\"upload\">Upload</button>\n                </form>\n            </div>\n   "
         "         <table>\n                <tr class=\"table-header\">\n                    <"
-        "td>&nbsp;</td>\n                    <td>Name</td>\n                    <td>Size</t"
-        "d>\n                    <td>Last Modified</td>\n                </tr>\n            "
-        "    <tr>\n                    <td>&nbsp;</td>\n                    <td><a href=\".\""
-        ">.</a></td>\n                    <td>&nbsp;</td>\n                    <td>&nbsp;</"
-        "td>\n                </tr>\n                \r\n", 746,  resp_arg);
+        "td>&nbsp;</td>\n                    <td>&nbsp;</td>\n                    <td>Name<"
+        "/td>\n                    <td>Size</td>\n                    <td>Last Modified</td"
+        ">\n                </tr>\n                <tr>\n                    <td>&nbsp;</td>"
+        "\n                    <td>&nbsp;</td>\n                    <td><a href=\".\">.</a></"
+        "td>\n                    <td>&nbsp;</td>\n                    <td>&nbsp;</td>\n    "
+        "            </tr>\n                \r\n", 818,  resp_arg);
     if(!(path[0]=='/' && path[1]=='\0')){
-     httpd_send_block("d9\r\n\n                <tr>\n                    <td>&nbsp;</td>\n"
-        "                    <td><a href=\"..\">..</a></td>\n                    <td>&nbsp;<"
-        "/td>\n                    <td>&nbsp;</td>\n                </tr>\n                \r\n", 223,  resp_arg);
+     httpd_send_block("fd\r\n\n                <tr>\n                    <td>&nbsp;</td>\n"
+        "                    <td>&nbsp;</td>\n                    <td><a href=\"..\">..</a><"
+        "/td>\n                    <td>&nbsp;</td>\n                    <td>&nbsp;</td>\n   "
+        "             </tr>\n                \r\n", 259,  resp_arg);
     }
      httpd_send_block("11\r\n\n                \r\n", 23,  resp_arg);
     stat_t st; dirent* de; while(nullptr!=(de=readdir(dir))) {
