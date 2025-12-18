@@ -1,0 +1,290 @@
+/* File Browser Stylesheet */
+
+/* ===== Global Styles ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+    color: #333;
+}
+
+/* ===== Main Container ===== */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+/* ===== Page Header ===== */
+.page-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 25px 30px;
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* ===== Upload Section ===== */
+.upload-section {
+    background: #f8f9fa;
+    padding: 20px 30px;
+    border-bottom: 2px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.upload-section form {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+
+input[type="file"] {
+    flex: 1;
+    padding: 10px 15px;
+    border: 2px dashed #cbd5e0;
+    border-radius: 8px;
+    background: white;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+}
+
+input[type="file"]:hover {
+    border-color: #667eea;
+}
+
+/* ===== Button Styles ===== */
+button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+button[name="upload"] {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 30px;
+}
+
+button[name="upload"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+button[name="delete"] {
+    background: #ff6b6b;
+    color: white;
+    padding: 6px 14px;
+    font-size: 12px;
+}
+
+button[name="delete"]:hover {
+    background: #ff5252;
+    transform: scale(1.05);
+}
+
+/* ===== Table Styles ===== */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+/* Table Header Row - Add class="table-header" to the header row */
+.table-header td {
+    background: #f1f3f5;
+    padding: 15px 20px;
+    font-weight: 600;
+    color: #495057;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #dee2e6;
+}
+
+/* ===== Row Styles ===== */
+tr {
+    border-bottom: 1px solid #e9ecef;
+    transition: background-color 0.2s ease;
+}
+
+tr:hover {
+    background: #f8f9fa;
+}
+
+td {
+    padding: 12px 20px;
+    vertical-align: middle;
+}
+
+/* ===== File and Directory Specific Styles ===== */
+
+/* Directory rows - Add class="directory" to directory rows */
+.directory {
+    background: linear-gradient(90deg, #e3f2fd 0%, transparent 100%);
+}
+
+.directory td a {
+    color: #2196F3;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.directory td a::before {
+    content: "📁";
+    font-size: 18px;
+}
+
+.directory td a:hover {
+    color: #1976D2;
+    text-decoration: underline;
+}
+
+/* File rows - Add class="file" to file rows */
+.file {
+    background: linear-gradient(90deg, #f3e5f5 0%, transparent 100%);
+}
+
+.file td a {
+    color: #673AB7;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.file td a::before {
+    content: "📄";
+    font-size: 16px;
+}
+
+.file td a:hover {
+    color: #512DA8;
+    text-decoration: underline;
+}
+
+/* ===== Special Rows ===== */
+
+/* Current and parent directory links */
+a[href="."], a[href=".."] {
+    color: #868e96;
+    font-style: italic;
+    text-decoration: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+a[href="."]:hover, a[href=".."]:hover {
+    background: #e9ecef;
+}
+
+/* ===== File Sizes ===== */
+td:nth-child(4) {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: #6c757d;
+}
+
+/* ===== Dates ===== */
+td:nth-child(5) {
+    font-size: 13px;
+    color: #868e96;
+}
+
+/* ===== Download Icon ===== */
+img[src*="download"] {
+    width: 18px;
+    height: 18px;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+    vertical-align: middle;
+}
+
+img[src*="download"]:hover {
+    opacity: 1;
+}
+
+/* ===== Link Styles ===== */
+a {
+    color: #667eea;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+a:hover {
+    color: #764ba2;
+}
+
+/* ===== Responsive Design ===== */
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+    
+    .page-header {
+        font-size: 18px;
+        padding: 15px 20px;
+    }
+    
+    .upload-section {
+        padding: 15px 20px;
+    }
+    
+    .upload-section form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    input[type="file"] {
+        width: 100%;
+    }
+    
+    td {
+        padding: 8px 10px;
+        font-size: 14px;
+    }
+    
+    /* Hide file size on mobile */
+    td:nth-child(4) {
+        display: none;
+    }
+    
+    .table-header td:nth-child(3) {
+        display: none;
+    }
+}
+
+/* ===== Empty State ===== */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #868e96;
+}
+
+.empty-state::before {
+    content: "📂";
+    font-size: 48px;
+    display: block;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}

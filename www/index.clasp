@@ -1,17 +1,30 @@
 <%@status code="200" text="OK"%>
-<%@header name="Content-Type" value="text/html"%><!DOCTYPE html>
+<%@header name="Content-Type" value="text/html; charset=utf-8"%><!DOCTYPE html>
 <html>
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="stylesheet" href="/default.css">
         <title>Browsing filesystems</title>
     </head>
     <body>
-        <table style="border: 0; padding: 10px 10px 10px 10px;">
-            <tr><td>Mount Point<td></tr>
-            <tr><td><a href="./spiffs/">/spiffs/</a></td></tr>
-        <%if(sdcard_init()) {%>
-            <tr><td><a href="./sdcard/">/sdcard/</a></tr>
-        <%}%>
-        </table>
+        <div class="container">
+            <div class="page-header">File Systems</div>
+            <table>
+                <tr class="table-header">
+                    <td>Mount Point</td>
+                    <td>Description</td>
+                </tr>
+                <tr class="directory">
+                    <td><a href="./spiffs/">/spiffs/</a></td>
+                    <td>Internal Flash Storage</td>
+                </tr>
+                <%if(sdcard_init()) {%>
+                <tr class="directory">
+                    <td><a href="./sdcard/">/sdcard/</a></td>
+                    <td>SD Card Storage</td>
+                </tr>
+                <%}%>
+            </table>
+        </div>
     </body>
 </html>

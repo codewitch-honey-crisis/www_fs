@@ -1,5 +1,5 @@
 <%@status code="200" text="OK"%>
-<%@header name="Content-Type" value="text/html"%><!DOCTYPE html>
+<%@header name="Content-Type" value="text/html; charset=utf-8"%><!DOCTYPE html>
 <html><%
     httpd_context_t& ctx = *(httpd_context_t*)resp_arg;
     const char* qpart = strchr(ctx.path_and_query,'?');
@@ -18,29 +18,79 @@
 %>
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="stylesheet" href="/default.css">
         <title>Browsing <%=path%></title>
     </head>
     <body>
-        <table style="border: 0; padding: 10px 10px 10px 10px;">
-            <tr><td colspan="4"><form action="." method="post" enctype="multipart/form-data"><input type="file" name="file"/><button type="submit" name="upload">Upload</button></form></td></tr>
-            <tr><td>&nbsp;</td><td>Name<td><td>Size</td><td>Last Modified</td></tr>
-            <tr><td>&nbsp;</td><td><a href=".">.</a></td><td>&nbsp;</td><td>&nbsp;</td></tr>
-        <%if(!(path[0]=='/' && path[1]=='\0')){%>
-            <tr><td>&nbsp;</td><td><a href="..">..</a></td><td>&nbsp;</td><td>&nbsp;</td></tr>
-        <%}%>
-        <%stat_t st; dirent* de; while(nullptr!=(de=readdir(dir))) {
-            strcpy(tmp,path);
-            strcat(tmp,de->d_name);
-            st = fs_stat(tmp);
-            bool is_dir = (st.st_mode & S_IFMT)==S_IFDIR;
-            httpd_url_encode(tmp2,sizeof(tmp2),de->d_name,nullptr);
-            if(is_dir) {
-                strcat(tmp2,"/");
-            }
-%>
-            <tr><td><%if(!is_dir){%><form action="." method="post"><button type="submit" name="delete" value="<%=de->d_name%>">Delete</button></form><% } else {%>&nbsp;<%}%></td><td><%if(!is_dir){%><a href="<%=tmp2%>?download"><img src="/images/download.png" /></a><%} else {%>&nbsp;<%}%><td><a href="<%=tmp2%>"><%=de->d_name%></a><td><%=is_dir?NAN:(((float)st.st_size)/1024.f)%><%=is_dir?"":"KB"%></td><td><%=st.st_mtim.tv_sec%></td></tr>
-        <%}%>        
-        </table>
+        <div class="container">
+            <div class="page-header">Browsing <%=path%></div>
+            <div class="upload-section">
+                <form action="." method="post" enctype="multipart/form-data">
+                    <input type="file" name="file"/>
+                    <button type="submit" name="upload">Upload</button>
+                </form>
+            </div>
+            <table>
+                <tr class="table-header">
+                    <td>&nbsp;</td>
+                    <td>Name</td>
+                    <td>Size</td>
+                    <td>Last Modified</td>
+                </tr>
+                <tr>
+                    <td>&nbsp;</td>
+                    <td><a href=".">.</a></td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                </tr>
+                <%if(!(path[0]=='/' && path[1]=='\0')){%>
+                <tr>
+                    <td>&nbsp;</td>
+                    <td><a href="..">..</a></td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                </tr>
+                <%}%>
+                <%stat_t st; dirent* de; while(nullptr!=(de=readdir(dir))) {
+                    strcpy(tmp,path);
+                    strcat(tmp,de->d_name);
+                    st = fs_stat(tmp);
+                    bool is_dir = (st.st_mode & S_IFMT)==S_IFDIR;
+                    httpd_url_encode(tmp2,sizeof(tmp2),de->d_name,nullptr);
+                    if(is_dir) {
+                        strcat(tmp2,"/");
+                    }
+                %>
+                <tr class="<%=is_dir?"directory":"file"%>">
+                    <td>
+                        <%if(!is_dir){%>
+                        <form action="." method="post">
+                            <button type="submit" name="delete" value="<%=de->d_name%>">Delete</button>
+                        </form>
+                        <% } else {%>
+                        &nbsp;
+                        <%}%>
+                    </td>
+                    <td>
+                        <%if(!is_dir){%>
+                        <a href="<%=tmp2%>?download"><img src="/images/download.png" /></a>
+                        <%} else {%>
+                        &nbsp;
+                        <%}%>
+                    </td>
+                    <td>
+                        <a href="<%=tmp2%>"><%=de->d_name%></a>
+                    </td>
+                    <td>
+                        <%=is_dir?NAN:(((float)st.st_size)/1024.f)%><%=is_dir?"":"KB"%>
+                    </td>
+                    <td>
+                        <%=st.st_mtim.tv_sec%>
+                    </td>
+                </tr>
+                <%}%>        
+            </table>
+        </div>
     </body>
 </html><%
     closedir(dir);

@@ -34,70 +34,73 @@ typedef struct {
 } httpd_content_entry;
 
 static httpd_content_entry httpd_content_types[] = {
-    {".aac", "audio/aac"},
-    {".avif", "image/avif"},
-    {".bin", "application/octet-stream"},
-    {".bmp", "image/bmp"},
-    {".css", "text/css"},
-    {".csv", "text/csv"},
-    {".doc", "application/msword"},
-    {".docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"},
-    {".epub", "application/epub+zip"},
-    {".gz", "application/gzip"},
-    {".gif", "image/gif"},
-    {".ico", "image/x-icon"},
-    {".jar", "application/java-archive"},
-    {".js", "text/javascript"},
-    {".mjs", "text/javascript"},
-    {".json", "application/json"},
-    {".mid", "audio/midi"},
-    {".midi", "audio/midi"},
-    {".mp3", "audio/mpeg"},
-    {".mp4", "video/mp4"},
-    {".mpeg", "video/mpeg"},
-    {".ogg", "audio/ogg"},
-    {".otf", "font/otf"},
-    {".pdf", "application/pdf"},
-    {".ppt", "application/vnd.ms-powerpoint"},
-    {".pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"},
-    {".rar", "application/vnd.rar"},
-    {".rtf", "application/rtf"},
-    {".jpg", "image/jpeg"},
-    {".jpeg", "image/jpeg"},
-    {".png", "image/png"},
-    {".apng", "image/apng"},
-    {".htm", "text/html"},
-    {".html", "text/html"},
-    {".svg", "image/svg+xml"},
-    {".tar", "application/x-tar"},
-    {".tif", "image/tiff"},
-    {".tiff", "image/tiff"},
-    {".ttf", "font/ttf"},
-    {".txt", "text/plain"},
-    {".vsd", "application/vnd.visio"},
-    {".wav", "audio/wav"},
-    {".weba", "audio/webm"},
-    {".webm", "video/webm"},
-    {".webp", "image/webp"},
-    {".woff", "font/woff"},
-    {".woff2", "font/woff2"},
-    {".xhtm", "application/xhtml+xml"},
-    {".xhtml", "application/xhtml+xml"},
-    {".xls", "application/vnd.ms-excel"},
-    {".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"},
-    {".xml", "application/xml"},
-    {".zip", "application/zip"},
-    {".7z", "application/x-7z-compressed"}
+    {"aac", "audio/aac"},
+    {"avif", "image/avif"},
+    {"bin", "application/octet-stream"},
+    {"bmp", "image/bmp"},
+    {"css", "text/css"},
+    {"csv", "text/csv"},
+    {"doc", "application/msword"},
+    {"docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"},
+    {"epub", "application/epub+zip"},
+    {"gz", "application/gzip"},
+    {"gif", "image/gif"},
+    {"ico", "image/x-icon"},
+    {"jar", "application/java-archive"},
+    {"js", "text/javascript"},
+    {"mjs", "text/javascript"},
+    {"json", "application/json"},
+    {"mid", "audio/midi"},
+    {"midi", "audio/midi"},
+    {"mp3", "audio/mpeg"},
+    {"mp4", "video/mp4"},
+    {"mpeg", "video/mpeg"},
+    {"ogg", "audio/ogg"},
+    {"otf", "font/otf"},
+    {"pdf", "application/pdf"},
+    {"ppt", "application/vnd.ms-powerpoint"},
+    {"pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"},
+    {"rar", "application/vnd.rar"},
+    {"rtf", "application/rtf"},
+    {"jpg", "image/jpeg"},
+    {"jpeg", "image/jpeg"},
+    {"png", "image/png"},
+    {"apng", "image/apng"},
+    {"htm", "text/html"},
+    {"html", "text/html"},
+    {"svg", "image/svg+xml"},
+    {"tar", "application/x-tar"},
+    {"tif", "image/tiff"},
+    {"tiff", "image/tiff"},
+    {"ttf", "font/ttf"},
+    {"txt", "text/plain"},
+    {"vsd", "application/vnd.visio"},
+    {"wav", "audio/wav"},
+    {"weba", "audio/webm"},
+    {"webm", "video/webm"},
+    {"webp", "image/webp"},
+    {"woff", "font/woff"},
+    {"woff2", "font/woff2"},
+    {"xhtm", "application/xhtml+xml"},
+    {"xhtml", "application/xhtml+xml"},
+    {"xls", "application/vnd.ms-excel"},
+    {"xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"},
+    {"xml", "application/xml"},
+    {"zip", "application/zip"},
+    {"7z", "application/x-7z-compressed"}
 };
 
 static const size_t httpd_content_types_size = 54;
 const char* httpd_content_type(const char* path) {
     const char* ext = strrchr(path, '.');
-    if (ext != NULL) {
-        // could optimize with a binary search or DFA
-        for (size_t i = 0; i < httpd_content_types_size; ++i) {
-            if (0 == my_stricmp(httpd_content_types[i].ext, ext)) {
-                return httpd_content_types[i].ctype;
+    if (ext != NULL && *ext) {
+        ++ext;
+        if(*ext) {
+            // could optimize with a binary search or DFA
+            for (size_t i = 0; i < httpd_content_types_size; ++i) {
+                if (0 == my_stricmp(httpd_content_types[i].ext, ext)) {
+                    return httpd_content_types[i].ctype;
+                }
             }
         }
     }
@@ -574,6 +577,8 @@ static esp_err_t httpd_request_handler(httpd_req_t* req) {
                     static const char* header2 = "\"\r\nContent-Length: ";
                     httpd_send(req, header2, strlen(header2));
                 } else {
+                    fputs("Viewing ", stdout);
+                    puts(path);
                     static const char* header1 =
                         "HTTP/1.1 200 OK\r\nContent-Type: ";
                     httpd_send(req, header1, strlen(header1));
